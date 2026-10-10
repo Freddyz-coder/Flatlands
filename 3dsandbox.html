@@ -651,11 +651,11 @@ const DEFS={
   cottage:{name:'Cottage',keys:'house home building residential small',cat:'build',layer:'obj',rotatable:true,popH:2.6,build:()=>buildHouse(0)},
   townhouse:{name:'Town House',keys:'house home building city tall residential',cat:'build',layer:'obj',rotatable:true,popH:3.3,build:()=>buildHouse(1)},
   tunnel:{name:'Tunnel',keys:'tunnel hill mountain under rail',cat:'build',layer:'obj',onRail:true,rotatable:true,popH:2.1,build:buildTunnel},
-  platform:{name:'Platform',keys:'station platform train stop elevated',cat:'build',layer:'ground',noScale:true,walk:true,popH:0.9,build:buildPlatform},
-  railway:{name:'Railway',keys:'rail railway track train rails steel',cat:'transit',layer:'ground',rail:true,noScale:true,popH:0.5},
+  platform:{name:'Platform',keys:'station platform train stop elevated',cat:'build',layer:'ground',rotatable:false,noScale:true,walk:true,popH:0.9,build:buildPlatform},
+  railway:{name:'Railway',keys:'rail railway track train rails steel',cat:'transit',layer:'ground',rail:true,rotatable:false,noScale:true,popH:0.5},
   train:{name:'Train',keys:'train locomotive engine railway cars',cat:'transit',layer:'special',needsRail:true,entity:true,rotatable:false,popH:1.8,build:buildTrainEngine},
-  pathway:{name:'Pathway',keys:'path pathway sidewalk walkway foot traffic',cat:'transit',layer:'ground',noScale:true,walk:true,popH:0.4,build:buildPathway},
-  grass:{name:'Grass Patch',keys:'grass patch meadow flowers green',cat:'nature',layer:'ground',noScale:true,popH:0.3,build:buildGrass},
+  pathway:{name:'Pathway',keys:'path pathway sidewalk walkway foot traffic',cat:'transit',layer:'ground',rotatable:false,noScale:true,walk:true,popH:0.4,build:buildPathway},
+  grass:{name:'Grass Patch',keys:'grass patch meadow flowers green',cat:'nature',layer:'ground',rotatable:false,noScale:true,popH:0.3,build:buildGrass},
   tree:{name:'Tree',keys:'tree oak forest foliage tall',cat:'nature',layer:'obj',rotatable:true,popH:2.1,build:buildTree},
   pine:{name:'Pine Tree',keys:'pine tree fir forest evergreen',cat:'nature',layer:'obj',rotatable:true,popH:2.2,build:buildPine},
   rock:{name:'Rock',keys:'rock stone pebble boulder small',cat:'nature',layer:'obj',rotatable:true,popH:0.8,build:buildRock},
@@ -700,7 +700,9 @@ function rebuildRail(r){
   r.conns=railConns(r.tile.x,r.tile.z);
   const old=r.group.children[0];
   if(old){r.group.remove(old);old.geometry.dispose();}
+  pickMeshes=pickMeshes.filter(m=>m.userData.rec!==r);
   r.group.add(buildRailMesh(r.conns));
+  registerPick(r);
 }
 function refreshRailsAround(tx,tz,self=true){
   const cells=self?[[0,0],[1,0],[-1,0],[0,1],[0,-1]]:[[1,0],[-1,0],[0,1],[0,-1]];
@@ -766,12 +768,14 @@ function removeRec(rec){
   updateStats();
 }
 function restoreRec(rec){
+  if(objects.includes(rec))return;
+  if(objects.length>=MAXO)return;
   scene.add(rec.group); if(rec.cars)rec.cars.forEach(c=>scene.add(c));
   objects.push(rec);
   if(rec.kind==='static'){
     const k=key(rec.tile.x,rec.tile.z);
-    if(rec.def.layer==='ground'){ if(!groundMap.has(k))groundMap.set(k,rec); if(rec.def.walk)walkSpots.push(rec); }
-    else{ if(!objMap.has(k))objMap.set(k,rec); if(rec.defId==='trashbin')bins.push(rec); }
+    if(rec.def.layer==='ground'){ if(!groundMap.has(k))groundMap.set(k,rec); if(rec.def.walk&&!walkSpots.includes(rec))walkSpots.push(rec); }
+    else{ if(!objMap.has(k))objMap.set(k,rec); if(rec.defId==='trashbin'&&!bins.includes(rec))bins.push(rec); }
     if(rec.def.rail)refreshRailsAround(rec.tile.x,rec.tile.z,true);
   }else if(!entities.includes(rec))entities.push(rec);
   registerPick(rec); updateStats();
@@ -919,6 +923,19 @@ function binTick(rec){
 }
 function updateWander(rec,dt,t){
   const a=rec.ai,Pa=rec.parts;
+  if(blockedAt(rec.pos.x,rec.pos.z)){
+    const tx=w2t(rec.pos.x),tz=w2t(rec.pos.z);
+    let esc=null;
+    for(const d of DIRS){
+      if(!blockedAt(t2w(tx+d.x),t2w(tz+d.z))){ esc=d; break; }
+    }
+    if(esc){
+      rec.pos.x=clamp(rec.pos.x+esc.x*a.speed*dt*2,-HB,HB);
+      rec.pos.z=clamp(rec.pos.z+esc.z*a.speed*dt*2,-HB,HB);
+      rec.heading=Math.atan2(esc.x,esc.z);
+      return;
+    }
+  }
   let walking=a.mode==='walk';
   if(a.mode==='idle'){
     a.timer-=dt;
@@ -934,8 +951,8 @@ function updateWander(rec,dt,t){
       if(a.stuck>2.5){pickTargetW(rec);a.stuck=0;}
       if(a.avoid)desired+=a.avoid;
       rec.heading+=angDiff(desired,rec.heading)*Math.min(1,dt*5);
-      const nx=rec.pos.x+Math.sin(rec.heading)*a.speed*dt;
-      const nz=rec.pos.z+Math.cos(rec.heading)*a.speed*dt;
+      const nx=clamp(rec.pos.x+Math.sin(rec.heading)*a.speed*dt,-HB,HB);
+      const nz=clamp(rec.pos.z+Math.cos(rec.heading)*a.speed*dt,-HB,HB);
       // never step into a solid tile (prevents sliding through walls)
       if(!blockedAt(nx,nz)){ rec.pos.x=nx; rec.pos.z=nz; }
       else if(!blockedAt(nx,rec.pos.z)){ rec.pos.x=nx; a.stuck=(a.stuck||0)+dt; }
@@ -1275,7 +1292,10 @@ function updateGhost(e){
     placing.gTile={x:tx,z:tz};
     const old=ghost.children[0];
     if(old){ghost.remove(old);old.geometry.dispose();}
-    ghost.add(buildRailMesh(railConns(tx,tz)));
+    const rm=buildRailMesh(railConns(tx,tz));
+    rm.castShadow=rm.receiveShadow=false;
+    rm.material=GHOST_V;
+    ghost.add(rm);
   }
   let r=placing.rot;
   if(placing.defId==='tunnel'){
@@ -1460,6 +1480,7 @@ window.addEventListener('pointerup',e=>{
       if(placing&&placing.defId===dc.defId)stopPlacing();
       else startPlacing(dc.defId);
     }
+    if(strokeCmd)strokeCmd=null;
     return;
   }
   if(!downInfo)return;
@@ -1521,9 +1542,11 @@ window.addEventListener('keydown',e=>{
   keys.add(k);
 });
 window.addEventListener('keyup',e=>keys.delete(e.key.toLowerCase()));
-window.addEventListener('blur',()=>keys.clear());
+window.addEventListener('blur',()=>{keys.clear();panning=null;painting=false;painted=false;dragCandidate=null;downInfo=null;});
+window.addEventListener('pointercancel',()=>{panning=null;painting=false;painted=false;dragCandidate=null;downInfo=null;});
 window.addEventListener('resize',()=>{
   camera.aspect=innerWidth/innerHeight; camera.updateProjectionMatrix();
+  renderer.setPixelRatio(Math.min(devicePixelRatio,2));
   renderer.setSize(innerWidth,innerHeight);
 });
 
@@ -1565,6 +1588,8 @@ const resetBtn=document.getElementById('resetBtn');
 resetBtn.addEventListener('click',()=>{
   if(resetArm){
     clearTimeout(resetArm); resetArm=null;
+    clearGenesisTimers();
+    stopPlacing(); deselect(); closePops();
     [...objects].forEach(r=>removeRec(r));
     history.length=0; histIdx=-1; updateUndoBtns();
     resetBtn.textContent='Flatten the world'; resetBtn.classList.remove('armed');
@@ -1579,6 +1604,7 @@ const restartBtn=document.getElementById('restartBtn');
 restartBtn.addEventListener('click',()=>{
   if(restartArm){
     clearTimeout(restartArm); restartArm=null;
+    clearGenesisTimers();
     restartBtn.textContent='Restart the game'; restartBtn.classList.remove('armed');
     stopPlacing(); deselect(); closePops();
     [...objects].forEach(r=>removeRec(r));
@@ -1660,14 +1686,20 @@ const STARTER=[
   ['human',38,47],['human',41,48],['cat',32,46],['dog',48,46],['duck',35,46],
   ['train',44,44],
 ];
+const genesisTimers=[];
+function clearGenesisTimers(){ while(genesisTimers.length) clearTimeout(genesisTimers.pop()); }
 function runGenesis(){
+  clearGenesisTimers();
   const ground=[],things=[];
   STARTER.forEach(s=>(DEFS[s[0]].layer==='ground'?ground:things).push(s));
   ground.forEach(s=>place(s[0],s[1],s[2],s[3]||0,{genesis:true}));
-  things.forEach((s,i)=>later(420+i*85,()=>{
-    const rec=place(s[0],s[1],s[2],s[3]||0,{genesis:true});
-    if(rec)dropAnim(rec);
-  }));
+  things.forEach((s,i)=>{
+    const tid=later(420+i*85,()=>{
+      const rec=place(s[0],s[1],s[2],s[3]||0,{genesis:true});
+      if(rec)dropAnim(rec);
+    });
+    genesisTimers.push(tid);
+  });
 }
 
 /* ================================================================
