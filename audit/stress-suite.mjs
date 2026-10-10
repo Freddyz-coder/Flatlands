@@ -66,6 +66,7 @@ console.log('== S3: undo/redo hammering while trains run ==');
     T.updateTrain(t2, 0.016, i / 60);
     T.updatePuffs(0.016); T.updateTweens(0.016);
   }
+  T.removeRec(bench);
   ok(isFinite(t1.pos.x) && isFinite(t2.pos.x), 'trains stay finite during hammering');
   ok(!T.objects.includes(bench) && !T.objMap.has(T.key(25, 31)), 'final bench removal clears both registry and object map');
   const maps = [T.groundMap.size, T.objMap.size];

@@ -47,6 +47,7 @@ export function buildCore(opts = {}) {
     ' updateWander, pickTargetW, binTick, groundYAt, blockedAt, spawnPuff, updatePuffs,' +
     ' updateTweens, dropAnim, DEFS, GRID, TILE, WORLD, HALF, HB, MAXO, DIRS, key, t2w, w2t, inGrid,' +
     ' history, pushCmd, undo, redo, applyCmd, getHistIdx:()=>histIdx,' +
+    ' weather, setWeather, WEATHER_TYPES, worldTime, updateWorldLighting,' +
     ' scene };',
   ].join('\n');
 

@@ -79,6 +79,7 @@ try{
   test(await page.evaluate(()=>clockTime.textContent==='06:00'&&worldTime.hours===6),'Dawn control resets simulated time');
   await page.evaluate(()=>{const input=document.getElementById('timeSpeed');input.value='0.12';input.dispatchEvent(new Event('input',{bubbles:true}));});
   test(await page.evaluate(()=>Math.abs(worldTime.speed-.12)<1e-9),'Cycle speed control updates simulated speed');
+  const canvas=await page.$('#scene');
   const canvasBox=await canvas.boundingBox();
   await page.mouse.move(canvasBox.x+canvasBox.width*.5,canvasBox.y+canvasBox.height*.5);
   const zoomStart=await page.evaluate(()=>cam.targetDist);
@@ -88,6 +89,7 @@ try{
   const zoomOut=await page.evaluate(()=>cam.targetDist);
   test(zoomIn<zoomStart&&zoomOut>zoomIn,'Wheel up zooms in and wheel down zooms out');
   await page.click('[data-set="zoomReverse"]');
+  await page.mouse.move(canvasBox.x+canvasBox.width*.5,canvasBox.y+canvasBox.height*.5);
   const reverseStart=await page.evaluate(()=>cam.targetDist);
   await page.mouse.wheel(0,-100);
   test(await page.evaluate(start=>cam.targetDist>start,reverseStart),'Reverse wheel zoom preference is applied');

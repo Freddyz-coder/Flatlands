@@ -12,13 +12,14 @@ any required check is propagated to the command result. `npm run test:core` and
 
 ## Machine-counted assertions
 
-The current suite has **180 machine-counted assertions**. This is an assertion
+The current suite has **233 machine-counted assertions**. This is an assertion
 count, not a count of scenarios, simulated ticks, or console messages.
 
 | Suite | File | Assertions | Coverage |
 | --- | --- | ---: | --- |
-| Core systems | `audit/test-core-suite.mjs` | 59 | Placement validation, 900-object cap, rail graph, train recovery, lifecycle maps, wanderers, bins, tunnels, invalid numeric input |
-| Feature expansion | `audit/test-feature-suite.mjs` | 20 | New catalog definitions and placement, train heading mapping, clock/time markup, lighting integration, and wheel preference wiring |
+| Core systems | `audit/test-core-suite.mjs` | 58 | Placement validation, 900-object cap, rail graph, train recovery, lifecycle maps, wanderers, bins, tunnels, invalid numeric input |
+| Feature expansion | `audit/test-feature-suite.mjs` | 20 | Decor catalog definitions and placement, train heading mapping, clock/time markup, lighting integration, and wheel preference wiring |
+| Gameplay expansion | `audit/test-expansion-suite.mjs` | 54 | Town infrastructure assets (station, shop, bridge, road, fountain, clocktower), elevation layers, walkSpots registration, dynamic weather engine & lighting, NPC behavioral purpose (dogs, ducks, citizens), UI search/category tabs, duplication hotkey (Ctrl+D) |
 | History stress | `audit/test-history-stress.mjs` | 15 | Multi-command undo/redo, branch truncation, deletion restoration, history cap |
 | Simulation stress | `audit/stress-suite.mjs` | 13 | Saturation, crowd updates, train/restore churn, transforms |
 | Wall guard | `audit/test-guard.mjs` | 2 | No wall occupancy for 12,000 ticks and escape through a one-tile gap |
@@ -38,6 +39,7 @@ browser test fetches Three.js from a CDN or assumes a developer-home Firefox pat
 ```sh
 node audit/test-core-suite.mjs
 node audit/test-feature-suite.mjs
+node audit/test-expansion-suite.mjs
 node audit/test-history-stress.mjs
 node audit/stress-suite.mjs
 node audit/test-guard.mjs

@@ -51,6 +51,12 @@
          border-radius:50%; border:2px solid var(--ink); background:var(--panel2);
          font-family:'Titan One'; font-size:12px; color:var(--ink); line-height:1; }
   .qbtn:hover{ background:var(--ink); color:var(--panel); }
+  .catTabs{ display:flex; gap:4px; padding:0 12px 6px; overflow-x:auto; scrollbar-width:none; }
+  .catTabs::-webkit-scrollbar{ display:none; }
+  .catTab{ padding:4px 9px; border-radius:999px; border:1.5px solid var(--ink); background:var(--panel2);
+           font-size:11px; font-weight:700; color:var(--ink); cursor:pointer; white-space:nowrap; transition:background .1s, color .1s; }
+  .catTab:hover{ background:var(--line); }
+  .catTab.active{ background:var(--ink); color:var(--panel); }
   #cats{ flex:1; overflow-y:auto; padding:2px 12px 10px; }
   #cats::-webkit-scrollbar{ width:8px; }
   #cats::-webkit-scrollbar-thumb{ background:var(--line); border-radius:8px; }
@@ -85,7 +91,9 @@
   #objpop::after{ content:''; position:absolute; left:50%; bottom:-9px; transform:translateX(-50%);
                   border:5px solid transparent; border-top:7px solid var(--ink); }
   @keyframes fadein{ from{ opacity:0; } }
+  .op-head{ display:flex; flex-direction:column; align-items:center; gap:2px; }
   .op-name{ font-family:'Titan One'; font-size:13px; letter-spacing:.4px; color:var(--ink); text-align:center; }
+  .op-coords{ font-size:10px; font-weight:700; color:var(--soft); letter-spacing:.05em; text-transform:uppercase; }
   .op-row{ display:flex; align-items:center; gap:6px; }
   .op-btn{ width:30px; height:30px; display:grid; place-items:center; border-radius:9px;
            background:var(--panel2); border:2px solid var(--ink); box-shadow:0 2px 0 var(--ink);
@@ -102,37 +110,40 @@
         padding:14px; animation:fadein .12s; }
   #settingsPop{ left:66px; top:14px; max-height:calc(100vh - 28px); overflow-y:auto; }
   .pop h4{ font-family:'Titan One'; font-size:14px; color:var(--ink); margin-bottom:10px; }
+  .set-sec{ font-family:'Titan One'; font-size:11.5px; color:var(--ink); letter-spacing:.04em; margin:14px 0 6px; padding-top:6px; border-top:1.5px dashed var(--line); }
+  .set-sec:first-of-type{ margin-top:4px; padding-top:0; border-top:none; }
   .set-label{ font-size:11px; font-weight:700; letter-spacing:.08em; text-transform:uppercase; color:var(--soft); margin:10px 0 6px; }
   .seg{ display:flex; border:2px solid var(--ink); border-radius:11px; overflow:hidden; }
   .seg button{ flex:1; display:flex; align-items:center; justify-content:center; gap:6px; padding:7px 4px;
-               background:var(--panel); border:none; font-size:12px; font-weight:600; }
+               background:var(--panel); border:none; font-size:12px; font-weight:600; cursor:pointer; }
   .seg button + button{ border-left:2px solid var(--ink); }
   .seg button.active{ background:var(--ink); color:var(--panel); }
   .sw{ width:12px; height:12px; border-radius:50%; border:2px solid var(--ink); }
   .seg button.active .sw{ border-color:var(--panel); }
   .tgl{ width:100%; display:flex; align-items:center; justify-content:space-between; padding:7px 2px;
-        background:none; border:none; font-size:13.5px; font-weight:500; }
+        background:none; border:none; font-size:13.5px; font-weight:500; cursor:pointer; }
   .switch{ width:38px; height:20px; border:2px solid var(--ink); border-radius:999px; background:var(--panel2); position:relative; transition:background .15s; }
   .switch::after{ content:''; position:absolute; left:2px; top:2px; width:12px; height:12px; border-radius:50%; background:var(--ink); transition:left .15s, background .15s; }
   .tgl.on .switch{ background:var(--ink); }
   .tgl.on .switch::after{ left:20px; background:var(--panel); }
   #resetBtn{ width:100%; margin-top:12px; padding:8px; font-weight:700; font-size:12.5px; border-radius:11px;
-             background:var(--panel2); border:2px solid var(--ink); box-shadow:0 3px 0 var(--ink); color:var(--ink); }
+             background:var(--panel2); border:2px solid var(--ink); box-shadow:0 3px 0 var(--ink); color:var(--ink); cursor:pointer; }
   #resetBtn.armed, #restartBtn.armed{ background:var(--danger); border-color:var(--danger); color:#fff; box-shadow:0 3px 0 #8d2f27; }
   .timeReadout{ display:flex; align-items:baseline; justify-content:space-between; gap:8px; color:var(--ink); }
   #timeLabel{ font-weight:700; font-size:18px; letter-spacing:.04em; }
   #timePhase{ color:var(--soft); font-size:10px; font-weight:700; letter-spacing:.08em; text-transform:uppercase; }
   .timeRange{ width:100%; accent-color:var(--ink); }
   .timeButtons{ display:flex; gap:6px; }
-  .timeButtons button{ flex:1; padding:6px 4px; border:2px solid var(--ink); border-radius:9px; background:var(--panel2); font-size:11px; font-weight:700; }
+  .timeButtons button{ flex:1; padding:6px 4px; border:2px solid var(--ink); border-radius:9px; background:var(--panel2); font-size:11px; font-weight:700; cursor:pointer; }
   .timeButtons button:hover{ background:var(--ink); color:var(--panel); }
   .rangeLabel{ display:flex; justify-content:space-between; color:var(--soft); font-size:11px; }
-  #worldClock{ position:fixed; left:50%; top:14px; transform:translateX(-50%); z-index:19; min-width:142px;
+  #worldClock{ position:fixed; left:50%; top:14px; transform:translateX(-50%); z-index:19; min-width:150px;
     padding:7px 15px 8px; text-align:center; background:rgba(248,242,231,.9); border:2px solid #161b22;
     border-radius:14px; box-shadow:0 3px 0 rgba(22,27,34,.8); color:#161b22; pointer-events:none; }
   body[data-theme="dark"] #worldClock{ background:rgba(23,29,38,.92); border-color:#f2ead9; color:#f2ead9; box-shadow:0 3px 0 rgba(242,234,217,.7); }
   #worldClock strong{ display:block; font:700 22px 'Outfit'; letter-spacing:.08em; line-height:1; }
-  #worldClock span{ display:block; margin-top:3px; font-size:10px; font-weight:700; letter-spacing:.12em; opacity:.72; }
+  .clockSub{ display:flex; align-items:center; justify-content:center; gap:6px; margin-top:3px; }
+  #worldClock span{ display:inline-block; font-size:10px; font-weight:700; letter-spacing:.1em; opacity:.8; }
 
   /* ---------- help card ---------- */
   #helpCard{ width:310px; z-index:60; }
@@ -185,6 +196,14 @@
     <input id="search" type="text" placeholder="Search things…" spellcheck="false" autocomplete="off">
     <button id="qPlace" class="qbtn" title="How placing works">?</button>
   </div>
+  <div class="catTabs" id="catTabs">
+    <button type="button" class="catTab active" data-cat="all">All</button>
+    <button type="button" class="catTab" data-cat="build">Buildings</button>
+    <button type="button" class="catTab" data-cat="transit">Transit</button>
+    <button type="button" class="catTab" data-cat="nature">Nature</button>
+    <button type="button" class="catTab" data-cat="street">Street</button>
+    <button type="button" class="catTab" data-cat="life">Life</button>
+  </div>
   <div id="cats"></div>
   <div class="sbFoot"><span id="statThings">0 / 900</span><span id="statFps">— fps</span></div>
 </aside>
@@ -200,12 +219,16 @@
   <button class="hbtn chunky qwide" id="qCam" title="Camera &amp; god powers">?</button>
 </div>
 
-<div id="worldClock" aria-live="polite"><strong id="clockTime">08:00</strong><span id="clockPhase">DAYLIGHT</span></div>
+<div id="worldClock" aria-live="polite"><strong id="clockTime">08:00</strong><div class="clockSub"><span id="clockPhase">DAYLIGHT</span><span id="clockWeather">☀ Clear</span></div></div>
 
 <div id="objpop" class="hidden">
-  <div class="op-name" id="opName"></div>
+  <div class="op-head">
+    <div class="op-name" id="opName"></div>
+    <div class="op-coords" id="opCoords"></div>
+  </div>
   <div class="op-row">
     <button class="op-btn" id="opRotate" title="Rotate 90°"><i data-lucide="rotate-cw"></i></button>
+    <button class="op-btn" id="opDup" title="Duplicate (Ctrl+D)"><i data-lucide="copy"></i></button>
     <button class="op-btn" id="opSdown" title="Smaller"><i data-lucide="minus"></i></button>
     <div class="op-scale" id="opScale">100%</div>
     <button class="op-btn" id="opSup" title="Bigger"><i data-lucide="plus"></i></button>
@@ -216,16 +239,7 @@
 
 <div id="settingsPop" class="pop hidden">
   <h4>Settings</h4>
-  <div class="set-label">Menu colour</div>
-  <div class="seg" id="themeSeg">
-    <button type="button" data-v="light"><span class="sw" style="background:#f8f2e7"></span>Warm white</button>
-    <button type="button" data-v="dark"><span class="sw" style="background:#171d26"></span>GitHub dark</button>
-  </div>
-  <div class="set-label">World</div>
-  <button class="tgl" type="button" data-set="shadows"><span>Shadows</span><span class="switch"></span></button>
-  <button class="tgl" type="button" data-set="grid"><span>Grid lines</span><span class="switch"></span></button>
-  <button class="tgl" type="button" data-set="clouds"><span>Clouds</span><span class="switch"></span></button>
-  <button class="tgl" type="button" data-set="sound"><span>Sounds</span><span class="switch"></span></button>
+  <div class="set-sec">Simulation &amp; World</div>
   <div class="set-label">Time of day</div>
   <div class="timeReadout"><span id="timeLabel">08:00</span><span id="timePhase">DAYLIGHT</span></div>
   <input class="timeRange" id="timeRange" type="range" min="0" max="1439" step="1" value="480" aria-label="Time of day">
@@ -233,7 +247,28 @@
   <button class="tgl" type="button" data-set="autoTime"><span>Automatic time</span><span class="switch"></span></button>
   <div class="rangeLabel"><span>Cycle speed</span><span id="timeSpeedValue">0.04 h/s</span></div>
   <input class="timeRange" id="timeSpeed" type="range" min="0.01" max="0.20" step="0.01" value="0.04" aria-label="Day night cycle speed">
+  <div class="set-label">Weather</div>
+  <div class="seg" id="weatherSeg">
+    <button type="button" data-w="clear" class="active">Clear</button>
+    <button type="button" data-w="cloudy">Cloudy</button>
+    <button type="button" data-w="rain">Rain</button>
+    <button type="button" data-w="fog">Fog</button>
+  </div>
+  <button class="tgl" type="button" data-set="autoWeather"><span>Automatic weather</span><span class="switch"></span></button>
+
+  <div class="set-sec">Display &amp; Controls</div>
+  <div class="set-label">Menu colour</div>
+  <div class="seg" id="themeSeg">
+    <button type="button" data-v="light"><span class="sw" style="background:#f8f2e7"></span>Warm white</button>
+    <button type="button" data-v="dark"><span class="sw" style="background:#171d26"></span>GitHub dark</button>
+  </div>
+  <button class="tgl" type="button" data-set="shadows"><span>Shadows</span><span class="switch"></span></button>
+  <button class="tgl" type="button" data-set="grid"><span>Grid lines</span><span class="switch"></span></button>
+  <button class="tgl" type="button" data-set="clouds"><span>Clouds</span><span class="switch"></span></button>
+  <button class="tgl" type="button" data-set="sound"><span>Sounds</span><span class="switch"></span></button>
   <button class="tgl" type="button" data-set="zoomReverse"><span>Reverse wheel zoom</span><span class="switch"></span></button>
+
+  <div class="set-sec">Town Management</div>
   <button id="resetBtn" type="button">Flatten the world</button>
   <button id="restartBtn" type="button" style="width:100%; margin-top:8px; padding:8px; font-weight:700; font-size:12.5px; border-radius:11px;
          background:var(--panel2); border:2px solid var(--ink); box-shadow:0 3px 0 var(--ink); color:var(--ink);">Restart the game</button>
@@ -311,6 +346,8 @@ sun.shadow.camera.near=10; sun.shadow.camera.far=420;
 sun.shadow.bias=-0.0006; sun.shadow.normalBias=0.03;
 scene.add(hemi,sun,sun.target);
 const worldTime={hours:8,auto:true,speed:0.04};
+const weather={type:'clear',auto:false,timer:100};
+const WEATHER_TYPES=['clear','cloudy','rain','fog'];
 const skyTop=new THREE.Color(),skyHorizon=new THREE.Color(),fogTone=new THREE.Color(),sunTone=new THREE.Color();
 const daySkyTop=new THREE.Color(0x4aa3e6),daySkyHorizon=new THREE.Color(0xe2f3f8),
       nightSkyTop=new THREE.Color(0x101a38),nightSkyHorizon=new THREE.Color(0x43516d),
@@ -329,24 +366,65 @@ function updateWorldLighting(force=false){
   const warm=clamp(twilight+Math.max(0,1-daylight)*.18,0,1);
   const angle=cycle;
   sun.position.set(Math.cos(angle)*120,Math.sin(angle)*130,70);
+
+  const w=weather.type;
+  const sunMul=w==='clear'?1.0:w==='cloudy'?0.42:w==='fog'?0.28:0.2;
+  const hemiMul=w==='clear'?1.0:w==='cloudy'?0.84:w==='fog'?0.8:0.7;
+
   sunTone.set(0xfff3dd).lerp(warmSun,warm*.72);
-  sun.color.copy(sunTone); sun.intensity=0.08+daylight*.72+twilight*.18;
+  if(w==='rain')sunTone.lerp(new THREE.Color(0x9cb0c6),0.35);
+  else if(w==='cloudy')sunTone.lerp(new THREE.Color(0xd8dfe8),0.25);
+  else if(w==='fog')sunTone.lerp(new THREE.Color(0xd0d8dc),0.3);
+
+  sun.color.copy(sunTone);
+  sun.intensity=(0.08+daylight*.72+twilight*.18)*sunMul;
   hemi.color.copy(nightHemi).lerp(dayHemi,daylight);
   hemi.groundColor.copy(nightGround).lerp(dayGround,daylight);
-  hemi.intensity=0.25+daylight*.38+twilight*.12;
+  hemi.intensity=(0.25+daylight*.38+twilight*.12)*hemiMul;
+
   mixTone(skyTop,nightSkyTop,daySkyTop,daylight); skyTop.lerp(dawnSkyTop,warm*.35);
   mixTone(skyHorizon,nightSkyHorizon,daySkyHorizon,daylight); skyHorizon.lerp(dawnSkyHorizon,warm*.4);
   mixTone(fogTone,nightFog,dayFog,daylight); fogTone.lerp(warmFog,warm*.18);
-  if(scene.fog)scene.fog.color.copy(fogTone);
+
+  if(w==='rain'){
+    skyTop.lerp(new THREE.Color(0x38475a),0.6);
+    skyHorizon.lerp(new THREE.Color(0x6a7a90),0.6);
+    fogTone.lerp(new THREE.Color(0x566579),0.6);
+  }else if(w==='cloudy'){
+    skyTop.lerp(new THREE.Color(0x687d96),0.45);
+    skyHorizon.lerp(new THREE.Color(0xb0c0d2),0.45);
+    fogTone.lerp(new THREE.Color(0xa4b4c6),0.45);
+  }else if(w==='fog'){
+    skyTop.lerp(new THREE.Color(0x8696a4),0.55);
+    skyHorizon.lerp(new THREE.Color(0xced7df),0.6);
+    fogTone.lerp(new THREE.Color(0xc0cbd4),0.6);
+  }
+
+  const fogNear=w==='fog'?35:w==='rain'?85:w==='cloudy'?125:170;
+  const fogFar=w==='fog'?150:w==='rain'?230:w==='cloudy'?310:360;
+  if(scene.fog){
+    scene.fog.color.copy(fogTone);
+    scene.fog.near=fogNear;
+    scene.fog.far=fogFar;
+  }
+
   skyCtx.fillStyle='#000';
   const grad=skyCtx.createLinearGradient(0,0,0,256);
   grad.addColorStop(0,'#'+skyTop.getHexString()); grad.addColorStop(.55,'#'+skyHorizon.getHexString());
   grad.addColorStop(1,'#'+fogTone.getHexString()); skyCtx.fillStyle=grad; skyCtx.fillRect(0,0,2,256); skyTexture.needsUpdate=true;
   if(force||lightingRefresh<=0){
     lightingRefresh=.08;
-    const bulbLevel=clamp((.28-daylight+twilight*.7)*2.2,0,1);
+    const rainBoost=w==='rain'?0.35:w==='fog'?0.2:0;
+    const bulbLevel=clamp((.28-daylight+twilight*.7+rainBoost)*2.2,0,1);
     BULB.color.setRGB(1,0.55+bulbLevel*.35,0.18+bulbLevel*.45); BULB.opacity=.45+bulbLevel*.55;
   }
+}
+function setWeather(t){
+  if(!WEATHER_TYPES.includes(t))return;
+  weather.type=t;
+  updateWorldLighting(true);
+  if(typeof updateWeatherUI==='function')updateWeatherUI();
+  if(typeof saveWeather==='function')saveWeather();
 }
 
 /* ---------- ground ---------- */
@@ -628,6 +706,90 @@ function buildPlanter(){
   b.ico(0x55ad5b,M(0.18,0.82,0.04,0,rand(0,6.3),0,0.28,0.31,0.28));
   const g=new THREE.Group(); g.add(b.build()); return g;
 }
+function buildStation(){
+  const b=new B();
+  b.box(0x848b94,M(0,0.12,0,0,0,0,1.96,0.24,1.9));
+  for(const x of [-0.78,0.78])
+    for(const z of [-0.65,0.65])
+      b.cyl8(0x5c4228,M(x,1.05,z,0,0,0,0.08,1.86,0.08));
+  b.cone4(0x38485c,M(0,2.24,0,0,Math.PI/4,0,2.05,0.68,1.98));
+  b.box(0x94724b,M(0,1.1,-0.68,0,0,0,1.6,1.72,0.1));
+  b.box(0x5c4228,M(0,0.38,-0.42,0,0,0,1.2,0.1,0.34));
+  b.box(0x5c4228,M(-0.45,0.2,-0.42,0,0,0,0.08,0.3,0.3));
+  b.box(0x5c4228,M( 0.45,0.2,-0.42,0,0,0,0.08,0.3,0.3));
+  b.box(0xf5eedc,M(0,1.7,-0.62,0,0,0,0.85,0.24,0.04));
+  b.box(0x28323e,M(0,1.7,-0.59,0,0,0,0.72,0.08,0.03));
+  b.cyl8(0xf8f5ed,M(0,1.92,0.62,Math.PI/2,0,0,0.14,0.06,0.14));
+  b.cyl8(0x28323e,M(0,1.92,0.66,Math.PI/2,0,0,0.03,0.02,0.03));
+  const g=new THREE.Group(); g.add(b.build()); return g;
+}
+function buildShop(){
+  const b=new B();
+  b.box(0xf0e6ce,M(0,0.75,0,0,0,0,1.65,1.5,1.55));
+  b.cone4(0x8c4632,M(0,1.82,0,0,Math.PI/4,0,1.76,0.75,1.66));
+  b.box(0x6b492d,M(-0.42,0.48,0.78,0,0,0,0.36,0.92,0.06));
+  b.sph(0xd6a84d,M(-0.28,0.48,0.82,0,0,0,0.03,0.03,0.03));
+  b.box(0x543b25,M(0.35,0.65,0.78,0,0,0,0.68,0.7,0.06));
+  b.box(0xb5e0ee,M(0.35,0.65,0.795,0,0,0,0.58,0.6,0.04));
+  const colors=[0xc43c35,0xf5f0e6,0xc43c35,0xf5f0e6,0xc43c35];
+  for(let i=0;i<5;i++){
+    const x=-0.5+i*0.25;
+    b.box(colors[i],M(x,1.06,0.98,0.35,0,0,0.24,0.06,0.42));
+  }
+  b.box(0x9a4435,M(0.48,1.95,-0.35,0,0,0,0.22,0.6,0.22));
+  b.box(0x423326,M(-0.72,0.24,0.74,0,0,0.12,0.06,0.48,0.32));
+  b.box(0x282c34,M(-0.72,0.26,0.74,0,0,0.12,0.07,0.36,0.26));
+  const g=new THREE.Group(); g.add(b.build()); return g;
+}
+function buildBridge(){
+  const b=new B();
+  b.box(0x8a623f,M(0,0.36,0,0,0,0,1.86,0.14,1.15));
+  for(const x of [-0.85,0.85]){
+    b.box(0x767c84,M(x,0.18,0,0,0,0,0.28,0.36,1.22));
+    b.box(0x8a623f,M(x*0.9,0.22,0,0,0,x>0?-0.25:0.25,0.32,0.1,1.15));
+  }
+  for(const z of [-0.54,0.54]){
+    for(const x of [-0.8,-0.4,0,0.4,0.8])
+      b.cyl8(0x563820,M(x,0.62,z,0,0,0,0.05,0.42,0.05));
+    b.box(0x6e482b,M(0,0.84,z,0,0,0,1.82,0.07,0.08));
+    b.box(0x6e482b,M(0,0.56,z,0,0,0,1.82,0.05,0.06));
+  }
+  const g=new THREE.Group(); g.add(b.build()); return g;
+}
+function buildRoad(){
+  const b=new B();
+  b.box(0x343940,M(0,0.05,0,0,0,0,1.99,0.1,1.99));
+  for(const x of [-0.94,0.94])
+    b.box(0x8a929a,M(x,0.09,0,0,0,0,0.11,0.05,1.99));
+  for(const z of [-0.62,0,0.62])
+    b.box(0xf0f2f5,M(0,0.106,z,0,0,0,0.12,0.012,0.38));
+  const g=new THREE.Group(); g.add(b.build()); return g;
+}
+function buildFountain(){
+  const b=new B();
+  b.cyl8(0x848b94,M(0,0.14,0,0,0,0,0.92,0.28,0.92));
+  b.cyl8(0x4299cb,M(0,0.24,0,0,0,0,0.8,0.06,0.8));
+  b.cyl8(0x737982,M(0,0.48,0,0,0,0,0.28,0.45,0.28));
+  b.cyl8(0x848b94,M(0,0.72,0,0,0,0,0.52,0.14,0.52));
+  b.cyl8(0x4299cb,M(0,0.78,0,0,0,0,0.44,0.04,0.44));
+  b.cyl8(0x737982,M(0,0.92,0,0,0,0,0.1,0.22,0.1));
+  b.ico(0xe8f4fa,M(0,1.1,0,0,rand(0,6.3),0,0.16,0.22,0.16));
+  const g=new THREE.Group(); g.add(b.build()); return g;
+}
+function buildClocktower(){
+  const b=new B();
+  b.box(0x6e5c49,M(0,0.28,0,0,0,0,1.38,0.56,1.38));
+  b.box(0x8b745d,M(0,1.6,0,0,0,0,1.15,2.1,1.15));
+  b.box(0x5a4837,M(0,2.68,0,0,0,0,1.26,0.12,1.26));
+  b.box(0x8b745d,M(0,3.08,0,0,0,0,1.18,0.72,1.18));
+  for(const [x,z,rot] of [[0,0.6,0],[0,-0.6,Math.PI],[0.6,0,Math.PI/2],[-0.6,0,-Math.PI/2]]){
+    b.cyl8(0xf6f2e8,M(x,3.08,z,Math.PI/2,0,rot,0.22,0.03,0.22));
+    b.cyl8(0x283038,M(x,3.08,z+Math.cos(rot)*0.02,Math.PI/2,0,rot,0.03,0.02,0.03));
+  }
+  b.cone4(0x3e7655,M(0,3.92,0,0,Math.PI/4,0,1.28,0.95,1.28));
+  b.cone4(0xd4af37,M(0,4.52,0,0,0,0,0.08,0.28,0.08));
+  const g=new THREE.Group(); g.add(b.build()); return g;
+}
 
 /* ---------- railway (interlocking) ---------- */
 function buildRailMesh(conns){
@@ -767,11 +929,16 @@ function buildDuck(){
 const DEFS={
   cottage:{name:'Cottage',keys:'house home building residential small',cat:'build',layer:'obj',rotatable:true,popH:2.6,build:()=>buildHouse(0)},
   townhouse:{name:'Town House',keys:'house home building city tall residential',cat:'build',layer:'obj',rotatable:true,popH:3.3,build:()=>buildHouse(1)},
+  station:{name:'Station',keys:'station railway platform train shelter stop transit building waiting',cat:'build',layer:'obj',rotatable:true,popH:2.3,build:buildStation},
+  shop:{name:'Shop & Café',keys:'shop cafe store market commercial food coffee building restaurant',cat:'build',layer:'obj',rotatable:true,popH:2.6,build:buildShop},
+  clocktower:{name:'Clock Tower',keys:'clock tower tall landmark monument village bell time',cat:'build',layer:'obj',rotatable:true,popH:4.4,build:buildClocktower},
   tunnel:{name:'Tunnel',keys:'tunnel hill mountain under rail',cat:'build',layer:'obj',onRail:true,rotatable:true,popH:2.1,build:buildTunnel},
   platform:{name:'Platform',keys:'station platform train stop elevated',cat:'build',layer:'ground',rotatable:false,noScale:true,walk:true,popH:0.9,build:buildPlatform},
   railway:{name:'Railway',keys:'rail railway track train rails steel',cat:'transit',layer:'ground',rail:true,rotatable:false,noScale:true,popH:0.5},
   train:{name:'Train',keys:'train locomotive engine railway cars',cat:'transit',layer:'special',needsRail:true,entity:true,rotatable:false,popH:1.8,build:buildTrainEngine},
   pathway:{name:'Pathway',keys:'path pathway sidewalk walkway foot traffic',cat:'transit',layer:'ground',rotatable:false,noScale:true,walk:true,popH:0.4,build:buildPathway},
+  bridge:{name:'Footbridge',keys:'bridge footbridge cross walkway arch path transit walk',cat:'transit',layer:'obj',rotatable:true,walk:true,popH:1.6,build:buildBridge},
+  road:{name:'Road',keys:'road street asphalt pavement drive lane transit paved',cat:'transit',layer:'ground',rotatable:false,noScale:true,walk:true,popH:0.4,build:buildRoad},
   grass:{name:'Grass Patch',keys:'grass patch meadow flowers green',cat:'nature',layer:'ground',rotatable:false,noScale:true,popH:0.3,build:buildGrass},
   tree:{name:'Tree',keys:'tree oak forest foliage tall',cat:'nature',layer:'obj',rotatable:true,popH:2.1,build:buildTree},
   pine:{name:'Pine Tree',keys:'pine tree fir forest evergreen',cat:'nature',layer:'obj',rotatable:true,popH:2.2,build:buildPine},
@@ -782,6 +949,7 @@ const DEFS={
   bench:{name:'Bench',keys:'bench seat sit park rest furniture',cat:'street',layer:'obj',rotatable:true,popH:1.1,build:buildBench},
   streetlight:{name:'Streetlight',keys:'streetlight light lamp post street glow',cat:'street',layer:'obj',popH:3.0,build:buildStreetlight},
   trashbin:{name:'Trash Bin',keys:'trash bin garbage rubbish waste litter',cat:'street',layer:'obj',popH:1.0,build:buildTrashbin},
+  fountain:{name:'Fountain',keys:'fountain water park monument square gathering street decor pool',cat:'street',layer:'obj',rotatable:false,popH:1.5,build:buildFountain},
   fence:{name:'Fence',keys:'fence boundary garden wood rail',cat:'street',layer:'obj',rotatable:true,popH:1.2,build:buildFence},
   sign:{name:'Signpost',keys:'sign signpost notice direction street',cat:'street',layer:'obj',rotatable:true,popH:1.7,build:buildSign},
   crate:{name:'Crate',keys:'crate box cargo storage wood',cat:'street',layer:'obj',rotatable:true,popH:0.8,build:buildCrate},
@@ -868,7 +1036,7 @@ function place(defId,tx,tz,rot=0,opts={}){
   }else{
     const k=key(tx,tz);
     if(def.layer==='ground'){ groundMap.set(k,rec); if(def.walk)walkSpots.push(rec); }
-    else{ objMap.set(k,rec); if(defId==='trashbin')bins.push(rec); }
+    else{ objMap.set(k,rec); if(defId==='trashbin')bins.push(rec); if(def.walk)walkSpots.push(rec); }
     if(def.rail) refreshRailsAround(tx,tz,false);
     if(defId==='tunnel'){ const g=groundMap.get(k); if(g&&g.def.rail){const ax=axisOf(railConns(tx,tz));if(ax!==null){rec.rot=ax;group.rotation.y=ax;}} }
   }
@@ -888,6 +1056,7 @@ function removeRec(rec){
     }else{
       if(objMap.get(k)===rec)objMap.delete(k);
       const b=bins.indexOf(rec); if(b>=0)bins.splice(b,1);
+      const w=walkSpots.indexOf(rec); if(w>=0)walkSpots.splice(w,1);
     }
     if(rec.def.rail)refreshRailsAround(rec.tile.x,rec.tile.z,true);
   }else{
@@ -905,7 +1074,7 @@ function restoreRec(rec){
   if(rec.kind==='static'){
     const k=key(rec.tile.x,rec.tile.z);
     if(rec.def.layer==='ground'){ if(!groundMap.has(k))groundMap.set(k,rec); if(rec.def.walk&&!walkSpots.includes(rec))walkSpots.push(rec); }
-    else{ if(!objMap.has(k))objMap.set(k,rec); if(rec.defId==='trashbin'&&!bins.includes(rec))bins.push(rec); }
+    else{ if(!objMap.has(k))objMap.set(k,rec); if(rec.defId==='trashbin'&&!bins.includes(rec))bins.push(rec); if(rec.def.walk&&!walkSpots.includes(rec))walkSpots.push(rec); }
     if(rec.def.rail)refreshRailsAround(rec.tile.x,rec.tile.z,true);
   }else if(!entities.includes(rec))entities.push(rec);
   registerPick(rec); updateStats();
@@ -1031,15 +1200,54 @@ function groundYAt(wx,wz){
   if(!g)return 0;
   if(g.defId==='platform')return 0.46;
   if(g.defId==='pathway')return 0.16;
+  if(g.defId==='road')return 0.12;
   if(g.def.rail)return 0.18;
   if(g.defId==='grass')return 0.06;
   return 0;
 }
 function pickTargetW(rec){
   const a=rec.ai;
-  if(walkSpots.length&&Math.random()<0.4){
+  const curW=(typeof weather!=='undefined'&&weather.type)||'clear';
+  if(rec.defId==='dog'&&Math.random()<0.45){
+    const humans=entities.filter(e=>e.defId==='human');
+    if(humans.length){
+      const h=pick(humans);
+      a.tx=clamp(h.pos.x+rand(-2.5,2.5),-HB,HB);
+      a.tz=clamp(h.pos.z+rand(-2.5,2.5),-HB,HB);
+      a.avoid=0; return;
+    }
+  }
+  if(rec.defId==='duck'&&Math.random()<0.55){
+    const waterSpots=objects.filter(o=>o.defId==='fountain'||o.defId==='grass');
+    if(waterSpots.length){
+      const p=pick(waterSpots).group.position;
+      a.tx=clamp(p.x+rand(-1.2,1.2),-HB,HB);
+      a.tz=clamp(p.z+rand(-1.2,1.2),-HB,HB);
+      a.avoid=0; return;
+    }
+  }
+  if(rec.defId==='human'&&Math.random()<0.55){
+    if(curW==='rain'){
+      const shelters=objects.filter(o=>o.defId==='station'||o.defId==='shop'||o.defId==='platform'||o.defId==='cottage'||o.defId==='townhouse'||o.defId==='tunnel');
+      if(shelters.length&&Math.random()<0.75){
+        const s=pick(shelters).group.position;
+        a.tx=clamp(s.x+rand(-1.2,1.2),-HB,HB);
+        a.tz=clamp(s.z+rand(-1.2,1.2),-HB,HB);
+        a.avoid=0; return;
+      }
+    }
+    const publicSpots=objects.filter(o=>o.defId==='bench'||o.defId==='fountain'||o.defId==='station'||o.defId==='shop');
+    if(publicSpots.length&&Math.random()<0.45){
+      const s=pick(publicSpots).group.position;
+      a.tx=clamp(s.x+rand(-0.8,0.8),-HB,HB);
+      a.tz=clamp(s.z+rand(-0.8,0.8),-HB,HB);
+      a.avoid=0; return;
+    }
+  }
+  if(walkSpots.length&&Math.random()<0.45){
     const w=pick(walkSpots).group.position;
-    a.tx=w.x+rand(-0.6,0.6); a.tz=w.z+rand(-0.6,0.6);
+    a.tx=clamp(w.x+rand(-0.6,0.6),-HB,HB);
+    a.tz=clamp(w.z+rand(-0.6,0.6),-HB,HB);
   }else{
     const ang=rand(0,Math.PI*2),d=rand(a.range[0],a.range[1]);
     a.tx=clamp(rec.pos.x+Math.sin(ang)*d,-HB,HB);
@@ -1080,6 +1288,11 @@ function updateWander(rec,dt,t){
       return;
     }
   }
+  const curWeather=(typeof weather!=='undefined'&&weather.type)||'clear';
+  const isRain=curWeather==='rain';
+  const spdMult=isRain?(rec.defId==='human'?1.35:rec.defId==='duck'?1.2:rec.defId==='cat'?0.7:1):1;
+  const effSpeed=a.speed*spdMult;
+
   let walking=a.mode==='walk';
   if(a.mode==='idle'){
     a.timer-=dt;
@@ -1095,8 +1308,8 @@ function updateWander(rec,dt,t){
       if(a.stuck>2.5){pickTargetW(rec);a.stuck=0;}
       if(a.avoid)desired+=a.avoid;
       rec.heading+=angDiff(desired,rec.heading)*Math.min(1,dt*5);
-      const nx=clamp(rec.pos.x+Math.sin(rec.heading)*a.speed*dt,-HB,HB);
-      const nz=clamp(rec.pos.z+Math.cos(rec.heading)*a.speed*dt,-HB,HB);
+      const nx=clamp(rec.pos.x+Math.sin(rec.heading)*effSpeed*dt,-HB,HB);
+      const nz=clamp(rec.pos.z+Math.cos(rec.heading)*effSpeed*dt,-HB,HB);
       // never step into a solid tile (prevents sliding through walls)
       if(!blockedAt(nx,nz)){ rec.pos.x=nx; rec.pos.z=nz; }
       else if(!blockedAt(nx,rec.pos.z)){ rec.pos.x=nx; a.stuck=(a.stuck||0)+dt; }
@@ -1111,7 +1324,7 @@ function updateWander(rec,dt,t){
   const g=rec.group;
   let bob=0;
   if(walking){
-    a.phase+=dt*a.speed*(rec.defId==='duck'?9:5.5);
+    a.phase+=dt*effSpeed*(rec.defId==='duck'?(isRain?12:9):5.5);
     if(Pa.legL){
       Pa.legL.rotation.x=Math.sin(a.phase)*0.75; Pa.legR.rotation.x=-Math.sin(a.phase)*0.75;
       Pa.armL.rotation.x=-Math.sin(a.phase)*0.55; Pa.armR.rotation.x=Math.sin(a.phase)*0.55;
@@ -1211,6 +1424,26 @@ function buildClouds(){
     scene.add(g); clouds.push(g);
   }
 }
+/* ---------- rain particle effect (bounded buffer, 0 per-frame allocation) ---------- */
+let rainMesh=null;
+const RAIN_COUNT=180;
+(()=>{
+  try{
+    const geo=new THREE.BufferGeometry();
+    const pos=new Float32Array(RAIN_COUNT*2*3);
+    for(let i=0;i<RAIN_COUNT;i++){
+      const x=rand(-45,45),y=rand(0,28),z=rand(-45,45);
+      const i6=i*6;
+      pos[i6]=x; pos[i6+1]=y; pos[i6+2]=z;
+      pos[i6+3]=x-0.12; pos[i6+4]=y-0.7; pos[i6+5]=z-0.08;
+    }
+    geo.setAttribute('position',new THREE.BufferAttribute(pos,3));
+    const mat=new THREE.LineBasicMaterial({color:0xa2cbe2,transparent:true,opacity:0.55,depthWrite:false});
+    rainMesh=new THREE.LineSegments(geo,mat);
+    rainMesh.visible=false;
+    scene.add(rainMesh);
+  }catch(e){}
+})();
 
 /* ================================================================
    AUDIO — tiny procedural plops
@@ -1286,19 +1519,32 @@ catsEl.appendChild(noRes);
   }catch(e){/* thumbnails are a bonus — never block the game */}
 })();
 
-document.getElementById('search').addEventListener('input',e=>{
-  const q=e.target.value.trim().toLowerCase();
+let activeCat='all';
+function filterCatalog(){
+  const q=(document.getElementById('search').value||'').trim().toLowerCase();
   let any=false;
-  document.querySelectorAll('.item').forEach(b=>{
-    const show=!q||b.dataset.name.includes(q);
-    b.style.display=show?'':'none'; if(show)any=true;
+  document.querySelectorAll('.cat').forEach(sec=>{
+    const catId=sec.dataset.cat;
+    const catMatch=activeCat==='all'||activeCat===catId;
+    let secHasVisible=false;
+    sec.querySelectorAll('.item').forEach(b=>{
+      const nameMatch=!q||b.dataset.name.includes(q);
+      const show=catMatch&&nameMatch;
+      b.style.display=show?'':'none';
+      if(show){secHasVisible=true;any=true;}
+    });
+    sec.style.display=(catMatch&&secHasVisible)?'':'none';
   });
-  document.querySelectorAll('.cat').forEach(s=>{
-    const vis=[...s.querySelectorAll('.item')].some(b=>b.style.display!=='none');
-    s.style.display=vis?'':'none';
+  noRes.classList.toggle('hidden',any||(!q&&activeCat==='all'));
+}
+document.querySelectorAll('.catTab').forEach(tab=>{
+  tab.addEventListener('click',()=>{
+    activeCat=tab.dataset.cat;
+    document.querySelectorAll('.catTab').forEach(t=>t.classList.toggle('active',t===tab));
+    filterCatalog();
   });
-  noRes.classList.toggle('hidden',any||!q);
 });
+document.getElementById('search').addEventListener('input',filterCatalog);
 
 /* ---------- stats / toasts / tips ---------- */
 const statThings=document.getElementById('statThings'),statFps=document.getElementById('statFps');
@@ -1328,6 +1574,7 @@ const brackets=(()=>{
   m.visible=false; scene.add(m); return m;
 })();
 const objpop=document.getElementById('objpop'),opName=document.getElementById('opName'),
+      opCoords=document.getElementById('opCoords'),opDup=document.getElementById('opDup'),
       opScale=document.getElementById('opScale'),
       opRotate=document.getElementById('opRotate'),opSdown=document.getElementById('opSdown'),
       opSup=document.getElementById('opSup'),opDel=document.getElementById('opDel'),
@@ -1335,12 +1582,23 @@ const objpop=document.getElementById('objpop'),opName=document.getElementById('o
 function select(rec){
   selected=rec; brackets.visible=true;
   opName.textContent=rec.def.name;
+  if(opCoords)opCoords.textContent=`Tile (${rec.tile.x}, ${rec.tile.z})`;
   opRotate.style.display=rec.def.rotatable===false?'none':'';
   const noScale=!!rec.def.noScale;
   scaleRow.forEach(el=>el.style.display=noScale?'none':'');
   refreshPopScale();
   objpop.classList.remove('hidden');
 }
+function duplicateSelected(){
+  if(!selected)return;
+  const defId=selected.defId,rot=selected.rot;
+  startPlacing(defId);
+  if(placing){
+    placing.rot=rot;
+    toast(`Holding a copy of ${selected.def.name} — click to place.`,'sparkles');
+  }
+}
+if(opDup)opDup.addEventListener('click',duplicateSelected);
 function deselect(){ selected=null; brackets.visible=false; objpop.classList.add('hidden'); }
 function refreshPopScale(){ if(selected)opScale.textContent=Math.round(selected.scale*100)+'%'; }
 function pushTransform(rec,b,a){
@@ -1665,6 +1923,11 @@ window.addEventListener('keydown',e=>{
   const k=e.key.toLowerCase();
   if((e.ctrlKey||e.metaKey)&&k==='z'){e.preventDefault();e.shiftKey?redo():undo();return;}
   if((e.ctrlKey||e.metaKey)&&k==='y'){e.preventDefault();redo();return;}
+  if((e.ctrlKey||e.metaKey)&&k==='d'){
+    e.preventDefault();
+    if(selected)duplicateSelected();
+    return;
+  }
   // Ctrl/Cmd+R must NOT fall through to the browser (page reload = world reset).
   // It rotates the held object (like Q/E) when one is in hand.
   if((e.ctrlKey||e.metaKey)&&k==='r'){
@@ -1704,7 +1967,7 @@ document.getElementById('zoutBtn').addEventListener('click',()=>cam.targetDist=c
 /* ================================================================
    SETTINGS / THEME / HELP
    ================================================================ */
-const prefs={theme:'light',shadows:true,grid:false,clouds:true,sound:true,autoTime:true,zoomReverse:false};
+const prefs={theme:'light',shadows:true,grid:false,clouds:true,sound:true,autoTime:true,zoomReverse:false,autoWeather:false};
 try{
   const saved=JSON.parse(localStorage.getItem('flatlands-settings')||'null');
   if(saved&&typeof saved==='object')Object.keys(prefs).forEach(k=>{if(typeof saved[k]===typeof prefs[k])prefs[k]=saved[k];});
@@ -1713,10 +1976,16 @@ try{
   if(savedTime&&Number.isFinite(savedTime.hours))worldTime.hours=((savedTime.hours%24)+24)%24;
   if(savedTime&&Number.isFinite(savedTime.speed))worldTime.speed=clamp(savedTime.speed,.01,.2);
   if(savedTime&&typeof savedTime.auto==='boolean')prefs.autoTime=worldTime.auto=savedTime.auto;
+  const savedWeather=JSON.parse(localStorage.getItem('flatlands-weather')||'null');
+  if(savedWeather&&typeof savedWeather==='object'){
+    if(typeof savedWeather.type==='string'&&WEATHER_TYPES.includes(savedWeather.type))weather.type=savedWeather.type;
+    if(typeof savedWeather.auto==='boolean')prefs.autoWeather=weather.auto=savedWeather.auto;
+  }
 }catch(e){}
 const settingsPop=document.getElementById('settingsPop'),helpCard=document.getElementById('helpCard'),
       helpBody=document.getElementById('helpBody');
 const clockTime=document.getElementById('clockTime'),clockPhase=document.getElementById('clockPhase'),
+      clockWeather=document.getElementById('clockWeather'),
       timeLabel=document.getElementById('timeLabel'),timePhase=document.getElementById('timePhase'),
       timeRange=document.getElementById('timeRange'),timeSpeed=document.getElementById('timeSpeed'),timeSpeedValue=document.getElementById('timeSpeedValue');
 function formatWorldTime(){
@@ -1731,10 +2000,18 @@ function worldPhase(){
 function saveWorldTime(){
   try{localStorage.setItem('flatlands-time',JSON.stringify({hours:worldTime.hours,speed:worldTime.speed,auto:prefs.autoTime}));}catch(e){}
 }
+function saveWeather(){
+  try{localStorage.setItem('flatlands-weather',JSON.stringify({type:weather.type,auto:weather.auto}));}catch(e){}
+}
 function updateClockUI(){
   const label=formatWorldTime(),phase=worldPhase(),minutes=Math.round((((worldTime.hours%24)+24)%24)*60)%1440;
   clockTime.textContent=label; clockPhase.textContent=phase; timeLabel.textContent=label; timePhase.textContent=phase;
   timeRange.value=minutes; timeSpeed.value=worldTime.speed; timeSpeedValue.textContent=worldTime.speed.toFixed(2)+' h/s';
+}
+function updateWeatherUI(){
+  const icons={clear:'☀ Clear',cloudy:'☁ Cloudy',rain:'🌧 Rain',fog:'🌫 Fog'};
+  if(clockWeather)clockWeather.textContent=icons[weather.type]||'☀ Clear';
+  document.querySelectorAll('#weatherSeg button').forEach(b=>b.classList.toggle('active',b.dataset.w===weather.type));
 }
 function setWorldTime(hours){
   worldTime.hours=((hours%24)+24)%24; updateWorldLighting(true); updateClockUI(); saveWorldTime();
@@ -1755,6 +2032,7 @@ function applySetting(k){
   if(k==='clouds')clouds.forEach(c=>c.visible=prefs.clouds);
   if(k==='sound')sndOn=prefs.sound;
   if(k==='autoTime'){worldTime.auto=prefs.autoTime;saveWorldTime();}
+  if(k==='autoWeather'){weather.auto=prefs.autoWeather;saveWeather();}
   if(k==='zoomReverse')savePrefs();
 }
 function savePrefs(){try{localStorage.setItem('flatlands-settings',JSON.stringify(prefs));}catch(e){}}
@@ -1762,6 +2040,7 @@ function syncSettings(){
   document.querySelectorAll('.tgl').forEach(b=>b.classList.toggle('on',prefs[b.dataset.set]));
 }
 document.querySelectorAll('#themeSeg button').forEach(b=>b.addEventListener('click',()=>applyTheme(b.dataset.v)));
+document.querySelectorAll('#weatherSeg button').forEach(b=>b.addEventListener('click',()=>setWeather(b.dataset.w)));
 document.querySelectorAll('.tgl').forEach(b=>b.addEventListener('click',()=>{
   const k=b.dataset.set; prefs[k]=!prefs[k]; syncSettings(); applySetting(k); savePrefs();
 }));
@@ -1770,7 +2049,7 @@ timeSpeed.addEventListener('input',e=>{worldTime.speed=clamp(Number(e.target.val
 document.getElementById('timeBack').addEventListener('click',()=>advanceWorldTime(-1));
 document.getElementById('timeDawn').addEventListener('click',()=>setWorldTime(6));
 document.getElementById('timeForward').addEventListener('click',()=>advanceWorldTime(1));
-worldTime.auto=prefs.autoTime; sndOn=prefs.sound; updateWorldLighting(true); updateClockUI();
+worldTime.auto=prefs.autoTime; weather.auto=prefs.autoWeather; sndOn=prefs.sound; updateWorldLighting(true); updateClockUI(); updateWeatherUI();
 let resetArm=null;
 const resetBtn=document.getElementById('resetBtn');
 resetBtn.addEventListener('click',()=>{
@@ -1809,16 +2088,17 @@ applyTheme(prefs.theme); syncSettings();
 const HELP={
   place:{h:'Dropping things',b:`<ul>
     <li><b>Drag</b> an item from the menu onto the land — or <b>click it once</b> to hold it, then click the world to drop it (keep clicking to spam).</li>
+    <li>Use <b>category tabs</b> or search to explore town buildings, transit, nature, and street decor.</li>
     <li><kbd>Q</kbd> <kbd>E</kbd> (or <kbd>Ctrl</kbd><kbd>R</kbd>) rotate rotatable items while held.</li>
-    <li>Drag with the left button to <b>paint</b> ground things — rails, paths, grass, platforms.</li>
+    <li>Drag with the left button to <b>paint</b> ground things — rails, paths, roads, grass, platforms.</li>
     <li>A <b>red ghost</b> means it won't fit: nothing may overlap.</li>
     <li><kbd>Esc</kbd> or a quick right-click puts the item back.</li></ul>`},
   cam:{h:'Camera & god powers',b:`<ul>
     <li><kbd>Scroll</kbd> zoom · <kbd>Right-drag</kbd> roam (only right button) · <kbd>R</kbd> quarter-turn</li>
     <li><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> drift around</li>
-    <li><b>Click a thing</b> to rotate, resize or smite it</li>
+    <li><b>Click a thing</b> to rotate, resize, smite or <b>duplicate</b> (<kbd>Ctrl</kbd><kbd>D</kbd>)</li>
     <li><kbd>Ctrl</kbd><kbd>Z</kbd> undo · <kbd>Ctrl</kbd><kbd>Y</kbd> redo · <kbd>Del</kbd> smite</li>
-    <li>Trains only live on rails. Tunnels love straight rails.</li></ul>`}
+    <li>Weather &amp; day/night can be configured in <b>Settings</b> (<i data-lucide="settings" style="width:12px;height:12px"></i>)</li></ul>`}
 };
 let helpKey=null;
 function openHelp(k,anchor){
@@ -1906,6 +2186,14 @@ function loop(now){
 
   updateTweens(dt);
   if(worldTime.auto)worldTime.hours=(worldTime.hours+dt*worldTime.speed)%24;
+  if(weather.auto){
+    weather.timer-=dt;
+    if(weather.timer<=0){
+      const opts=WEATHER_TYPES.filter(x=>x!==weather.type);
+      setWeather(pick(opts));
+      weather.timer=rand(65,150);
+    }
+  }
   clockRefresh-=dt; lightingRefresh-=dt; timeSaveRefresh-=dt;
   if(worldTime.auto&&lightingRefresh<=0)updateWorldLighting();
   if(clockRefresh<=0){updateClockUI();clockRefresh=.1;}
@@ -1932,6 +2220,29 @@ function loop(now){
     if(c.position.x>150){c.position.x=-150;c.position.z=rand(-130,130);}
   }
   updatePuffs(dt);
+
+  if(rainMesh){
+    if(weather.type==='rain'){
+      rainMesh.visible=true;
+      const attr=rainMesh.geometry.attributes.position;
+      const pos=attr.array;
+      for(let i=0;i<RAIN_COUNT;i++){
+        const i6=i*6;
+        pos[i6+1]-=36*dt;
+        pos[i6+4]-=36*dt;
+        pos[i6]-=6*dt;
+        pos[i6+3]-=6*dt;
+        if(pos[i6+1]<0){
+          const rx=cam.tx+rand(-42,42),rz=cam.tz+rand(-42,42),ry=rand(22,28);
+          pos[i6]=rx; pos[i6+1]=ry; pos[i6+2]=rz;
+          pos[i6+3]=rx-0.12; pos[i6+4]=ry-0.7; pos[i6+5]=rz-0.08;
+        }
+      }
+      attr.needsUpdate=true;
+    }else if(rainMesh.visible){
+      rainMesh.visible=false;
+    }
+  }
 
   // selection follows its object
   if(selected){

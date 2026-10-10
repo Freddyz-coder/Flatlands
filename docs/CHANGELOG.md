@@ -8,6 +8,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ## [Unreleased]
 
+### Gameplay Expansion: Weather, Town Architecture, NPC Purpose & Usability
+- **Dynamic Weather System:** Introduced a 4-state weather simulation (`clear`, `cloudy`, `rain`, `fog`) that cooperates with the day/night cycle. Dynamically adjusts direct sun intensity, ambient hemisphere balance, sky gradient color stops, atmospheric fog near/far distances, and triggers streetlight illumination during low-visibility downpours and dense fog. Includes a lightweight, zero-allocation bounded rain particle system (180 particles, single draw call). Supports manual switching and an optional automatic weather change timer persisted in `localStorage`.
+- **Town & Infrastructure Catalog:** Added 6 new procedural low-poly assets using single-draw-call merged geometry: Railway Station (`station`), Shop & Café (`shop`), Clock Tower (`clocktower`), Footbridge (`bridge`), Paved Road (`road`), and Town Fountain (`fountain`). Integrated into placement validation, tile overlap checks, elevation calculation (`groundYAt`), `walkSpots` indexing, rotation, scaling, undo/redo, deletion, and reset.
+- **NPC Purposeful Behaviors:** Upgraded wanderer AI with contextual intelligence: dogs preferentially choose humans as companions and wander nearby; ducks are drawn toward fountains and grass; humans preferentially gather near benches, fountains, stations, and shops; in the rain, citizens pick up their walking pace toward shelters while ducks bob more excitedly; citizens pause to watch trains as they pass nearby.
+- **Sandbox Usability:** Added quick category filter tabs (`All`, `Buildings`, `Transit`, `Nature`, `Street`, `Life`) atop the sidebar with instant filtering; selected-object HUD popup now displays tile coordinates (`X, Z`); added one-click object duplication button in the selection popup and keyboard shortcut (<kbd>Ctrl</kbd>+<kbd>D</kbd>); organized Settings popup into clean sections for Simulation, Display, and Town Management.
+- **Expansion Test Suite:** Added `audit/test-expansion-suite.mjs` with 54 deterministic assertions; aggregate test suite grew to 233 assertions with 100% verified passing execution across all 9 suites in Node.js and Playwright Firefox.
+
 ### Flatlands feature expansion
 - Added a persistent simulated day/night cycle with smooth sun, hemisphere, sky, fog, dusk/dawn, nighttime streetlight, and playable low-light transitions.
 - Added an in-game clock and Settings controls for automatic progression, speed, scrubbing, hour stepping, dawn reset, and local persistence.

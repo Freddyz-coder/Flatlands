@@ -59,30 +59,38 @@ Flatlands is constructed as an event-driven, single-document WebGL application. 
   - Station platforms: `y = 0.40`.
   - Static structures (cottages, trees, streetlights): resting on ground `y = 0.0`.
 
-### Camera Rig & Lighting
+### Camera Rig, Lighting & Weather
 - **Camera:** `THREE.PerspectiveCamera` positioned at an isometric slant (`fov: 42`, elevation `y: 42`, offset `z: 46`).
 - **Camera Navigation:**
   - **Pan:** Right-drag pans smoothly across the world plane via target lerping (`cam.tx`, `cam.tz`).
   - **Zoom:** Mouse wheel adjusts target distance (`cam.dist`), smoothly clamped between 18 and 92 units.
   - **Rotation:** Smooth 90° stepped rotations (`cam.targetRot`), interpolating with a damping factor of `0.14`.
-- **Lighting Setup:**
+- **Lighting & Dynamic Weather System:**
   - **Directional Sun Light:** Positioned at `(24, 48, 28)` casting high-resolution soft shadows (`shadow.mapSize: 2048x2048`, `bias: -0.0004`).
-  - **World Time:** `worldTime` advances in simulated hours. `updateWorldLighting()` reuses the existing sun, hemisphere light, fog, and canvas sky texture to interpolate daylight, dusk, dawn, and nighttime without rebuilding the scene.
-  - **Ambient Light & Sky Gradient:** Directional and hemisphere lighting, fog, and the sky gradient share the same solar phase. Streetlight bulbs use a shared `MeshBasicMaterial` whose brightness changes at night; no per-lamp dynamic light is created.
-  - **Fog:** A lightweight `THREE.Fog` fades distant landscape boundaries and follows the same day/night palette.
+  - **World Time & Sun Phase:** `worldTime` advances in simulated hours. `updateWorldLighting()` interpolates daylight, dusk, dawn, and nighttime palettes without rebuilding the scene graph.
+  - **Weather States (`clear`, `cloudy`, `rain`, `fog`):**
+    - `clear`: Full directional sunlight and standard atmospheric fog (`near: 46`, `far: 140`).
+    - `cloudy`: Sun intensity attenuated (0.55×), overcast hemisphere light, softened ambient tones.
+    - `rain`: Heavy cloud cover (sun attenuated to 0.35×), darkened sky gradient, tightened fog (`near: 34`, `far: 90`), and streetlights automatically illuminate even during daytime.
+    - `fog`: Dense atmospheric mist (`near: 18`, `far: 62`), muted sunlight (0.40×), soft diffused horizon.
+  - **Rain Particle System:** A bounded, single-draw-call `THREE.Points` mesh (`rainMesh`) containing 180 rain streaks within a `[-26, +26]` camera-centered box. Drops fall at 32 units/s and wrap seamlessly with zero per-frame garbage collector allocation. Only active during `rain` weather.
+  - **Ambient Light & Sky Gradient:** Directional and hemisphere lighting, fog, and the sky gradient share the solar phase. Streetlight bulbs use a shared `MeshBasicMaterial` whose brightness automatically boosts at dusk, night, or during rainstorms.
 
 ---
 
 ## 3. Procedural Geometry Engine (`B` Builder)
 
-Flatlands does not load external `.gltf` or `.obj` 3D model files. All 26 asset definitions are procedurally generated at runtime using an optimized merged-buffer builder (`class B`).
+Flatlands does not load external `.gltf` or `.obj` 3D model files. All 32 asset definitions are procedurally generated at runtime using an optimized merged-buffer builder (`class B`).
 
 ### Architecture of `class B`:
 1. **Primitive Cache (`P`):** Shared geometric primitives (`box`, `cyl`, `cyl8`, `cone`, `sphere`) pre-allocated with minimal vertex counts to maximize mobile and software-WebGL throughput.
-2. **Material Palette (`MAT`):** A shared indexed palette of `MeshLambertMaterial` instances with custom hex colors (terracotta, slate blue, meadow green, pine foliage, warm stone, wood, train iron).
+2. **Material Palette (`MAT`):** A shared indexed palette of `MeshLambertMaterial` instances with custom hex colors (terracotta, slate blue, meadow green, pine foliage, warm stone, wood, train iron, asphalt, cream walls, awning stripes, fountain water).
 3. **Buffer Merging:** `B.build()` compiles multiple sub-shapes into a single `THREE.BufferGeometry` or grouped mesh, dramatically reducing draw calls across the 900-object capacity.
 4. **Thumbnail Generation:** A lightweight offscreen renderer (`tR`) isolates each asset definition to render crisp 2D icon previews in the UI sidebar without blocking the main render loop.
-5. **Catalog additions:** Shrubs, flower beds, fences, signposts, crates, barrels, and planters reuse the same primitive palette, placement maps, capacity guard, thumbnail renderer, and history records as the original assets.
+5. **Expanded Catalog (32 Assets):**
+   - **Original & Scenery (19):** `track`, `train`, `cottage`, `house`, `tree`, `pine`, `flower`, `grass`, `path`, `platform`, `lantern`, `bench`, `fence_wood`, `trashbin`, `human`, `dog`, `cat`, `duck`, `tunnel`.
+   - **Detail Decor (7):** `shrub`, `flowerbed`, `fence`, `sign`, `crate`, `barrel`, `planter`.
+   - **Town Infrastructure (6):** `station` (passenger depot), `shop` (striped awning general store), `clocktower` (belfry tower with clock faces), `bridge` (elevated pedestrian footbridge), `road` (marked asphalt roadway), `fountain` (tiered basin with animated water shimmer).
 
 ---
 
@@ -129,7 +137,14 @@ When a rail tile is placed or modified:
 - **Avoidance Vector:** Entities cast forward and lateral probe rays against `objMap` and boundary walls.
 - **Non-Penetrating Slide:** If the target destination intersects a solid building or tree, movement clamps to an unobstructed tangential slide vector, preventing clipping.
 - **Pen Escape Mechanism:** In trapped or dense geometries, accumulated stuck counters trigger broad rotational retargeting, allowing NPCs to escape tight enclosures through single-tile openings.
-- **Path Bias:** Wanderers evaluate nearby `walkSpots`. If within range of a paved walkway or platform, they steer toward the path network and adjust their vertical foot height (`y = 0.02` to `0.40`).
+- **Path & Elevation Bias:** Wanderers evaluate nearby `walkSpots` (pathways, platforms, roads at `y = 0.12`, bridges at `y = 0.70`). If within range, they steer toward the walkway network and smoothly conform to surface elevations.
+- **Role-Specific Behavioral Steering:**
+  - **Dogs (`isDog`):** Exhibit companion loyalty by periodically seeking out nearby citizens within a 9-tile radius, following them affectionately while maintaining organic social spacing.
+  - **Ducks (`isDuck`):** Drawn toward water bodies (fountains) and lush grass patches. During rain, duck swimming/bobbing animation frequency doubles (16 rad/s vs 8 rad/s).
+  - **Citizens (`isHuman`):**
+    - **Shelter Seeking in Rain:** When weather transitions to `rain`, citizens accelerate their walking pace (1.45× speed boost) and steer toward nearby cottages, houses, shops, or stations to seek shelter.
+    - **Public Gatherings:** On clear days, citizens gather near communal hubs (fountains, benches, stations, shops) and pause for contemplative breaks.
+    - **Train Watching:** Citizens within 3.5 units of passing trains momentarily halt their movement, turning to watch the train pass before resuming their walk.
 - **Interactive Litter Mechanics:** Passing near a trash bin initiates a momentary pause where citizens deposit litter with confetti/dust particle feedback.
 
 ---
@@ -148,8 +163,25 @@ Flatlands implements a robust, capped command pattern supporting up to 120 histo
 
 ---
 
-## 8. Performance Budget & Resource Management
+## 8. Sandbox Usability & UI Architecture
+
+Flatlands features an intuitive, zero-dependency HUD designed for rapid world building and micro-management:
+
+- **Sidebar Filtering & Catalog Search:**
+  - Category pill tabs (`all`, `nature`, `urban`, `rail`, `decor`, `life`) filter catalog cards in real time.
+  - Live search input (`#catSearch`) matches item names dynamically across the 32 asset definitions with clean empty-state fallback.
+- **Object Inspection & Duplication:**
+  - Selection popup (`#objpop`) exposes precise tile coordinates (`#opCoords`: `[X, Z]`) and height values.
+  - One-click duplicate button (`#opDup`) and <kbd>Ctrl</kbd>+<kbd>D</kbd> shortcut instantly select the inspected asset for rapid replication.
+- **Time & Weather Integration:**
+  - Top HUD badge displays simulated 24h clock, solar phase icon, and current weather badge (`#clockWeather`).
+  - Settings panel features structured sections (`.set-sec`) separating World Clock, Dynamic Weather, Camera Controls, and Session Actions with segmented buttons and toggle switches.
+
+---
+
+## 9. Performance Budget & Resource Management
 
 - **Memory Retention:** Disposed geometries and materials explicitly call `.dispose()`.
 - **Software WebGL Compatibility:** Tested and verified under software WebGL (SwiftShader / Mesa llvmpipe) at a solid 60 FPS under normal loads.
 - **CPU Simulation Budget:** Full 300-agent crowd simulation with 200 obstacles consumes **~0.6 ms per frame**, well within the 16.6 ms frame budget for 60 FPS rendering.
+- **Particle Overhead:** 180 rain points updated strictly via `Float32Array` in-place positions without any per-frame object allocation.
