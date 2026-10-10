@@ -100,7 +100,7 @@
   .pop{ position:fixed; z-index:50; width:252px; background:var(--panel); border:2px solid var(--ink);
         border-radius:16px; box-shadow:0 4px 0 var(--ink), 0 18px 30px rgba(10,20,10,.22);
         padding:14px; animation:fadein .12s; }
-  #settingsPop{ left:66px; top:14px; }
+  #settingsPop{ left:66px; top:14px; max-height:calc(100vh - 28px); overflow-y:auto; }
   .pop h4{ font-family:'Titan One'; font-size:14px; color:var(--ink); margin-bottom:10px; }
   .set-label{ font-size:11px; font-weight:700; letter-spacing:.08em; text-transform:uppercase; color:var(--soft); margin:10px 0 6px; }
   .seg{ display:flex; border:2px solid var(--ink); border-radius:11px; overflow:hidden; }
@@ -119,6 +119,20 @@
   #resetBtn{ width:100%; margin-top:12px; padding:8px; font-weight:700; font-size:12.5px; border-radius:11px;
              background:var(--panel2); border:2px solid var(--ink); box-shadow:0 3px 0 var(--ink); color:var(--ink); }
   #resetBtn.armed, #restartBtn.armed{ background:var(--danger); border-color:var(--danger); color:#fff; box-shadow:0 3px 0 #8d2f27; }
+  .timeReadout{ display:flex; align-items:baseline; justify-content:space-between; gap:8px; color:var(--ink); }
+  #timeLabel{ font-weight:700; font-size:18px; letter-spacing:.04em; }
+  #timePhase{ color:var(--soft); font-size:10px; font-weight:700; letter-spacing:.08em; text-transform:uppercase; }
+  .timeRange{ width:100%; accent-color:var(--ink); }
+  .timeButtons{ display:flex; gap:6px; }
+  .timeButtons button{ flex:1; padding:6px 4px; border:2px solid var(--ink); border-radius:9px; background:var(--panel2); font-size:11px; font-weight:700; }
+  .timeButtons button:hover{ background:var(--ink); color:var(--panel); }
+  .rangeLabel{ display:flex; justify-content:space-between; color:var(--soft); font-size:11px; }
+  #worldClock{ position:fixed; left:50%; top:14px; transform:translateX(-50%); z-index:19; min-width:142px;
+    padding:7px 15px 8px; text-align:center; background:rgba(248,242,231,.9); border:2px solid #161b22;
+    border-radius:14px; box-shadow:0 3px 0 rgba(22,27,34,.8); color:#161b22; pointer-events:none; }
+  body[data-theme="dark"] #worldClock{ background:rgba(23,29,38,.92); border-color:#f2ead9; color:#f2ead9; box-shadow:0 3px 0 rgba(242,234,217,.7); }
+  #worldClock strong{ display:block; font:700 22px 'Outfit'; letter-spacing:.08em; line-height:1; }
+  #worldClock span{ display:block; margin-top:3px; font-size:10px; font-weight:700; letter-spacing:.12em; opacity:.72; }
 
   /* ---------- help card ---------- */
   #helpCard{ width:310px; z-index:60; }
@@ -186,6 +200,8 @@
   <button class="hbtn chunky qwide" id="qCam" title="Camera &amp; god powers">?</button>
 </div>
 
+<div id="worldClock" aria-live="polite"><strong id="clockTime">08:00</strong><span id="clockPhase">DAYLIGHT</span></div>
+
 <div id="objpop" class="hidden">
   <div class="op-name" id="opName"></div>
   <div class="op-row">
@@ -210,6 +226,14 @@
   <button class="tgl" type="button" data-set="grid"><span>Grid lines</span><span class="switch"></span></button>
   <button class="tgl" type="button" data-set="clouds"><span>Clouds</span><span class="switch"></span></button>
   <button class="tgl" type="button" data-set="sound"><span>Sounds</span><span class="switch"></span></button>
+  <div class="set-label">Time of day</div>
+  <div class="timeReadout"><span id="timeLabel">08:00</span><span id="timePhase">DAYLIGHT</span></div>
+  <input class="timeRange" id="timeRange" type="range" min="0" max="1439" step="1" value="480" aria-label="Time of day">
+  <div class="timeButtons"><button type="button" id="timeBack">−1 hour</button><button type="button" id="timeDawn">Dawn</button><button type="button" id="timeForward">+1 hour</button></div>
+  <button class="tgl" type="button" data-set="autoTime"><span>Automatic time</span><span class="switch"></span></button>
+  <div class="rangeLabel"><span>Cycle speed</span><span id="timeSpeedValue">0.04 h/s</span></div>
+  <input class="timeRange" id="timeSpeed" type="range" min="0.01" max="0.20" step="0.01" value="0.04" aria-label="Day night cycle speed">
+  <button class="tgl" type="button" data-set="zoomReverse"><span>Reverse wheel zoom</span><span class="switch"></span></button>
   <button id="resetBtn" type="button">Flatten the world</button>
   <button id="restartBtn" type="button" style="width:100%; margin-top:8px; padding:8px; font-weight:700; font-size:12.5px; border-radius:11px;
          background:var(--panel2); border:2px solid var(--ink); box-shadow:0 3px 0 var(--ink); color:var(--ink);">Restart the game</button>
@@ -262,12 +286,11 @@ renderer.shadowMap.type=THREE.PCFSoftShadowMap;
 
 const scene=new THREE.Scene();
 scene.fog=new THREE.Fog(0xdceff5,170,360);
-(()=>{ // vertical sky gradient
+let skyCtx,skyTexture;
+(()=>{ // reusable vertical sky gradient, recoloured by the simulated clock
   const cv=document.createElement('canvas'); cv.width=2; cv.height=256;
-  const g=cv.getContext('2d').createLinearGradient(0,0,0,256);
-  g.addColorStop(0,'#4aa3e6'); g.addColorStop(.55,'#a4d6f2'); g.addColorStop(1,'#e2f3f8');
-  const ctx=cv.getContext('2d'); ctx.fillStyle=g; ctx.fillRect(0,0,2,256);
-  scene.background=new THREE.CanvasTexture(cv);
+  skyCtx=cv.getContext('2d');
+  skyTexture=new THREE.CanvasTexture(cv); scene.background=skyTexture;
 })();
 
 const camera=new THREE.PerspectiveCamera(46,innerWidth/innerHeight,0.5,700);
@@ -278,7 +301,7 @@ function applyCam(){
   camera.lookAt(cam.tx,0,cam.tz);
 }
 
-scene.add(new THREE.HemisphereLight(0xdff3ff,0x86b46f,0.55));
+const hemi=new THREE.HemisphereLight(0xdff3ff,0x86b46f,0.55);
 const sun=new THREE.DirectionalLight(0xfff3dd,0.78);
 sun.position.set(90,130,70); sun.castShadow=true;
 sun.shadow.mapSize.set(2048,2048);
@@ -286,7 +309,45 @@ sun.shadow.camera.left=-125; sun.shadow.camera.right=125;
 sun.shadow.camera.top=125; sun.shadow.camera.bottom=-125;
 sun.shadow.camera.near=10; sun.shadow.camera.far=420;
 sun.shadow.bias=-0.0006; sun.shadow.normalBias=0.03;
-scene.add(sun,sun.target);
+scene.add(hemi,sun,sun.target);
+const worldTime={hours:8,auto:true,speed:0.04};
+const skyTop=new THREE.Color(),skyHorizon=new THREE.Color(),fogTone=new THREE.Color(),sunTone=new THREE.Color();
+const daySkyTop=new THREE.Color(0x4aa3e6),daySkyHorizon=new THREE.Color(0xe2f3f8),
+      nightSkyTop=new THREE.Color(0x101a38),nightSkyHorizon=new THREE.Color(0x43516d),
+      dawnSkyTop=new THREE.Color(0x8a72ba),dawnSkyHorizon=new THREE.Color(0xf0a16e),
+      nightHemi=new THREE.Color(0x8faad0),dayHemi=new THREE.Color(0xdff3ff),
+      nightGround=new THREE.Color(0x17233b),dayGround=new THREE.Color(0x86b46f),
+      nightFog=new THREE.Color(0x1b2944),dayFog=new THREE.Color(0xdceff5),warmFog=new THREE.Color(0xe5a17a),
+      warmSun=new THREE.Color(0xff9a62);
+let lightingRefresh=0;
+function mixTone(out,a,b,k){return out.copy(a).lerp(b,clamp(k,0,1));}
+function updateWorldLighting(force=false){
+  const h=((worldTime.hours%24)+24)%24;
+  const cycle=(h-6)/24*Math.PI*2, sunHeight=Math.sin(cycle);
+  const daylight=clamp((sunHeight+0.14)/1.14,0,1);
+  const twilight=clamp(1-Math.abs(sunHeight)/0.26,0,1)*(1-daylight*.45);
+  const warm=clamp(twilight+Math.max(0,1-daylight)*.18,0,1);
+  const angle=cycle;
+  sun.position.set(Math.cos(angle)*120,Math.sin(angle)*130,70);
+  sunTone.set(0xfff3dd).lerp(warmSun,warm*.72);
+  sun.color.copy(sunTone); sun.intensity=0.08+daylight*.72+twilight*.18;
+  hemi.color.copy(nightHemi).lerp(dayHemi,daylight);
+  hemi.groundColor.copy(nightGround).lerp(dayGround,daylight);
+  hemi.intensity=0.25+daylight*.38+twilight*.12;
+  mixTone(skyTop,nightSkyTop,daySkyTop,daylight); skyTop.lerp(dawnSkyTop,warm*.35);
+  mixTone(skyHorizon,nightSkyHorizon,daySkyHorizon,daylight); skyHorizon.lerp(dawnSkyHorizon,warm*.4);
+  mixTone(fogTone,nightFog,dayFog,daylight); fogTone.lerp(warmFog,warm*.18);
+  if(scene.fog)scene.fog.color.copy(fogTone);
+  skyCtx.fillStyle='#000';
+  const grad=skyCtx.createLinearGradient(0,0,0,256);
+  grad.addColorStop(0,'#'+skyTop.getHexString()); grad.addColorStop(.55,'#'+skyHorizon.getHexString());
+  grad.addColorStop(1,'#'+fogTone.getHexString()); skyCtx.fillStyle=grad; skyCtx.fillRect(0,0,2,256); skyTexture.needsUpdate=true;
+  if(force||lightingRefresh<=0){
+    lightingRefresh=.08;
+    const bulbLevel=clamp((.28-daylight+twilight*.7)*2.2,0,1);
+    BULB.color.setRGB(1,0.55+bulbLevel*.35,0.18+bulbLevel*.45); BULB.opacity=.45+bulbLevel*.55;
+  }
+}
 
 /* ---------- ground ---------- */
 function grassTexture(base,amp){
@@ -372,6 +433,7 @@ function getMat(color){
   return matCache.get(color);
 }
 const BULB=new THREE.MeshBasicMaterial({color:0xffd873});
+updateWorldLighting(true);
 
 (()=>{ // plot border (uses the merged-geometry builder declared above)
   const b=new B();
@@ -509,6 +571,61 @@ function buildTrashbin(){
   b.cyl8(0x3c5745,M(0,0.585,0,0,0,0,0.345,0.07,0.345));
   b.cyl6(0x3c5745,M(0,0.65,0,0,0,0,0.06,0.07,0.06));
   b.sph(0xf3efe4,M(0.36,0.06,0.22,0,0,0,0.07,0.055,0.07));
+  const g=new THREE.Group(); g.add(b.build()); return g;
+}
+function buildShrub(){
+  const b=new B();
+  b.cyl6(0x6c4b32,M(0,0.18,0,0,0,0,0.08,0.36,0.08));
+  b.ico(0x3f8e49,M(-0.18,0.42,0,0,rand(0,6.3),0,0.42,0.36,0.4));
+  b.ico(0x55a653,M(0.2,0.46,0.05,0,rand(0,6.3),0,0.4,0.34,0.38));
+  b.ico(0x478f45,M(0,0.63,-0.12,0,rand(0,6.3),0,0.34,0.3,0.34));
+  const g=new THREE.Group(); g.add(b.build()); return g;
+}
+function buildFlowerbed(){
+  const b=new B();
+  b.box(0x5ba84d,M(0,0.045,0,0,0,0,1.72,0.09,1.4));
+  for(const [x,z,c] of [[-.55,-.38,0xf2e26b],[0,-.22,0xe77ea0],[.55,-.35,0xf5f0e6],[-.3,.28,0xf5f0e6],[.32,.34,0xe77ea0]]){
+    b.cyl6(0x4f8e42,M(x,0.18,z,0,0,0,0.035,0.27,0.035));
+    b.ico(c,M(x,0.34,z,0,rand(0,6.3),0,0.13,0.1,0.13));
+  }
+  const g=new THREE.Group(); g.add(b.build()); return g;
+}
+function buildFence(){
+  const b=new B();
+  for(const x of [-0.72,0,0.72]) b.box(0x8a633f,M(x,0.48,0,0,0,0,0.13,0.96,0.13));
+  b.box(0xa8794c,M(0,0.67,0,0,0,0,1.65,0.11,0.11));
+  b.box(0xa8794c,M(0,0.34,0,0,0,0,1.65,0.11,0.11));
+  const g=new THREE.Group(); g.add(b.build()); return g;
+}
+function buildSign(){
+  const b=new B();
+  b.cyl6(0x6f4b31,M(0,0.62,0,0,0,0,0.08,1.24,0.08));
+  b.box(0xd6a84d,M(0,1.35,0,0,0,0,0.88,0.48,0.1));
+  b.box(0x5b4630,M(0,1.35,0.055,0,0,0,0.66,0.07,0.025));
+  const g=new THREE.Group(); g.add(b.build()); return g;
+}
+function buildCrate(){
+  const b=new B();
+  b.box(0xa87342,M(0,0.38,0,0,0,0,0.82,0.76,0.82));
+  b.box(0xd09a57,M(0,0.38,0.425,0,0,0,0.7,0.1,0.04));
+  b.box(0xd09a57,M(0,0.38,-0.425,0,0,0,0.7,0.1,0.04));
+  b.box(0xd09a57,M(0.425,0.38,0,0,0,0,0.04,0.1,0.7));
+  b.box(0xd09a57,M(-0.425,0.38,0,0,0,0,0.04,0.1,0.7));
+  const g=new THREE.Group(); g.add(b.build()); return g;
+}
+function buildBarrel(){
+  const b=new B();
+  b.cyl8(0x7c5738,M(0,0.42,0,0,0,0,0.42,0.84,0.42));
+  for(const y of [0.18,0.65]) b.cyl8(0x4d3a2d,M(0,y,0,0,0,0,0.445,0.06,0.445));
+  b.cyl8(0x9a6c43,M(0,0.84,0,0,0,0,0.36,0.06,0.36));
+  const g=new THREE.Group(); g.add(b.build()); return g;
+}
+function buildPlanter(){
+  const b=new B();
+  b.box(0xa95d42,M(0,0.24,0,0,0,0,0.92,0.48,0.72));
+  b.box(0x4b3528,M(0,0.51,0,0,0,0,0.72,0.06,0.54));
+  b.ico(0x44994b,M(-0.18,0.78,0,0,rand(0,6.3),0,0.3,0.34,0.3));
+  b.ico(0x55ad5b,M(0.18,0.82,0.04,0,rand(0,6.3),0,0.28,0.31,0.28));
   const g=new THREE.Group(); g.add(b.build()); return g;
 }
 
@@ -660,9 +777,16 @@ const DEFS={
   pine:{name:'Pine Tree',keys:'pine tree fir forest evergreen',cat:'nature',layer:'obj',rotatable:true,popH:2.2,build:buildPine},
   rock:{name:'Rock',keys:'rock stone pebble boulder small',cat:'nature',layer:'obj',rotatable:true,popH:0.8,build:buildRock},
   boulder:{name:'Boulder',keys:'boulder rock stone big crag',cat:'nature',layer:'obj',rotatable:true,popH:1.1,build:buildBoulder},
+  shrub:{name:'Shrub',keys:'shrub bush hedge plant garden nature',cat:'nature',layer:'obj',rotatable:true,popH:0.8,build:buildShrub},
+  flowerbed:{name:'Flower Bed',keys:'flower flowers bed garden bloom plant',cat:'nature',layer:'obj',rotatable:true,popH:0.6,build:buildFlowerbed},
   bench:{name:'Bench',keys:'bench seat sit park rest furniture',cat:'street',layer:'obj',rotatable:true,popH:1.1,build:buildBench},
   streetlight:{name:'Streetlight',keys:'streetlight light lamp post street glow',cat:'street',layer:'obj',popH:3.0,build:buildStreetlight},
   trashbin:{name:'Trash Bin',keys:'trash bin garbage rubbish waste litter',cat:'street',layer:'obj',popH:1.0,build:buildTrashbin},
+  fence:{name:'Fence',keys:'fence boundary garden wood rail',cat:'street',layer:'obj',rotatable:true,popH:1.2,build:buildFence},
+  sign:{name:'Signpost',keys:'sign signpost notice direction street',cat:'street',layer:'obj',rotatable:true,popH:1.7,build:buildSign},
+  crate:{name:'Crate',keys:'crate box cargo storage wood',cat:'street',layer:'obj',rotatable:true,popH:0.8,build:buildCrate},
+  barrel:{name:'Barrel',keys:'barrel cask cargo storage wood',cat:'street',layer:'obj',rotatable:true,popH:0.9,build:buildBarrel},
+  planter:{name:'Planter',keys:'planter pot garden plant flower decor',cat:'street',layer:'obj',rotatable:true,popH:1.1,build:buildPlanter},
   human:{name:'Human',keys:'human person people citizen walker life',cat:'life',layer:'life',entity:true,rotatable:false,popH:1.3,ai:{speed:1.15,range:[5,13],idle:[1.2,5]},build:buildHuman},
   cat:{name:'Cat',keys:'cat kitten kitty creature pet animal',cat:'life',layer:'life',entity:true,rotatable:false,popH:0.8,ai:{speed:1.7,range:[3,9],idle:[0.6,3]},build:buildCat},
   dog:{name:'Dog',keys:'dog puppy creature pet animal',cat:'life',layer:'life',entity:true,rotatable:false,popH:1.0,ai:{speed:2.1,range:[6,15],idle:[0.5,2.2]},build:buildDog},
@@ -721,8 +845,12 @@ function registerPick(rec){
   for(const r of roots) r.traverse(o=>{ if(o.isMesh){o.userData.rec=rec;pickMeshes.push(o);} });
 }
 function place(defId,tx,tz,rot=0,opts={}){
-  if(objects.length>=MAXO)return null; // central cap enforcement
   const def=DEFS[defId]; if(!def)return null;
+  // Keep the low-level API subject to the same rules as UI placement. Genesis,
+  // history restoration, and tests all enter through this function, so accepting
+  // bad tiles here would let callers desynchronise the scene and spatial maps.
+  if(!Number.isInteger(tx)||!Number.isInteger(tz)||!Number.isFinite(rot))return null;
+  if(objects.length>=MAXO||!canPlace(def,tx,tz))return null;
   let group;
   if(def.rail){ group=new THREE.Group(); group.add(buildRailMesh(railConns(tx,tz))); }
   else group=def.build();
@@ -748,6 +876,7 @@ function place(defId,tx,tz,rot=0,opts={}){
   return rec;
 }
 function removeRec(rec){
+  if(!rec||!objects.includes(rec))return false;
   scene.remove(rec.group); if(rec.cars)rec.cars.forEach(c=>scene.remove(c));
   pickMeshes=pickMeshes.filter(m=>m.userData.rec!==rec);
   const i=objects.indexOf(rec); if(i>=0)objects.splice(i,1);
@@ -766,10 +895,11 @@ function removeRec(rec){
   }
   if(selected===rec)deselect();
   updateStats();
+  return true;
 }
 function restoreRec(rec){
-  if(objects.includes(rec))return;
-  if(objects.length>=MAXO)return;
+  if(!rec||objects.includes(rec))return false;
+  if(objects.length>=MAXO||!canPlace(rec.def,rec.tile.x,rec.tile.z))return false;
   scene.add(rec.group); if(rec.cars)rec.cars.forEach(c=>scene.add(c));
   objects.push(rec);
   if(rec.kind==='static'){
@@ -779,17 +909,21 @@ function restoreRec(rec){
     if(rec.def.rail)refreshRailsAround(rec.tile.x,rec.tile.z,true);
   }else if(!entities.includes(rec))entities.push(rec);
   registerPick(rec); updateStats();
+  return true;
 }
 
 /* ================================================================
    TRAINS — follow the rails, shuttle at dead ends
    ================================================================ */
+// The locomotive's visual front is its local -X axis (cowcatcher and lamp).
+// Map that axis to the rail travel vector so the engine leads every segment.
+function trainYawFor(dir){ return Math.atan2(dir.z,-dir.x); }
 function initTrain(rec,tx,tz){
   const conns=railConns(tx,tz);
   const dir=conns.length?conns[0]:DIRS[0];
   const cx=t2w(tx),cz=t2w(tz);
   rec.pos={x:cx,z:cz}; rec.D=0; rec.dirx=dir.x; rec.dirz=dir.z;
-  rec.yaw=Math.atan2(dir.x,dir.z);
+  rec.yaw=trainYawFor(dir);
   rec.travel=dir; rec.at='edge'; rec.enter={x:-dir.x,z:-dir.z};
   rec.wp={x:cx+dir.x,z:cz+dir.z};
   rec.trail=[];
@@ -854,10 +988,15 @@ function updateTrain(rec,dt,t){
       rec.pos.x+=dx/dist*mv; rec.pos.z+=dz/dist*mv; rec.D+=mv; moved+=mv; step-=mv;
       rec.dirx=dx/dist; rec.dirz=dz/dist;
     }
-    const ty=Math.atan2(rec.dirx,rec.dirz);
+    // Keep the locomotive and every wagon tangent to the same interpolated
+    // path. The old formula pointed the cowcatcher across the rails.
+    const ty=trainYawFor({x:rec.dirx,z:rec.dirz});
     rec.yaw+=angDiff(ty,rec.yaw)*Math.min(1,dt*6);
     eng.rotation.y=rec.yaw;
     eng.position.set(rec.pos.x,0,rec.pos.z);
+    const tail=rec.trail[rec.trail.length-1];
+    if(!tail||rec.D-tail.d>0.2)rec.trail.push({x:rec.pos.x,z:rec.pos.z,d:rec.D});
+    else{tail.x=rec.pos.x;tail.z=rec.pos.z;tail.d=rec.D;}
     rec.smokeT-=dt;
     if(rec.smokeT<=0&&moved>0){
       rec.smokeT=0.34;
@@ -871,7 +1010,7 @@ function updateTrain(rec,dt,t){
     const p=sampleTrail(rec,rec.D-(1.95+i*1.5)*rec.scale);
     car.position.set(p.x,0,p.z);
     car.scale.setScalar(rec.scale);
-    const ty=Math.atan2(p.dx,p.dz);
+    const ty=trainYawFor({x:p.dx,z:p.dz});
     car.userData.yaw+=angDiff(ty,car.userData.yaw)*Math.min(1,dt*6);
     car.rotation.y=car.userData.yaw;
   });
@@ -923,6 +1062,11 @@ function binTick(rec){
 }
 function updateWander(rec,dt,t){
   const a=rec.ai,Pa=rec.parts;
+  // World edits, restoration and future import code may hand us an out-of-bounds
+  // position; clamp before idle/blocked handling so an idle entity cannot remain
+  // beyond the playable area until it next chooses to walk.
+  rec.pos.x=clamp(rec.pos.x,-HB,HB);
+  rec.pos.z=clamp(rec.pos.z,-HB,HB);
   if(blockedAt(rec.pos.x,rec.pos.z)){
     const tx=w2t(rec.pos.x),tz=w2t(rec.pos.z);
     let esc=null;
@@ -1314,7 +1458,7 @@ function updateGhost(e){
   marker.userData.bx=t2w(tx);
 }
 function canPlace(def,tx,tz){
-  if(!inGrid(tx,tz))return false;
+  if(!def||!Number.isInteger(tx)||!Number.isInteger(tz)||!inGrid(tx,tz))return false;
   const k=key(tx,tz);
   if(def.needsRail){
     if(!isRailAt(tx,tz))return false;
@@ -1504,7 +1648,10 @@ window.addEventListener('pointerup',e=>{
 });
 canvas.addEventListener('wheel',e=>{
   e.preventDefault();
-  cam.targetDist=clamp(cam.targetDist*Math.exp(e.deltaY*0.0011),16,190);
+  // A physical wheel-up (negative deltaY) always zooms in by default.
+  // The preference is deliberately limited to this canvas handler.
+  const sign=prefs.zoomReverse?-1:1;
+  cam.targetDist=clamp(cam.targetDist*Math.exp(e.deltaY*0.0011*sign),16,190);
 },{passive:false});
 canvas.addEventListener('contextmenu',e=>e.preventDefault());
 document.addEventListener('contextmenu',e=>{if(e.target===canvas)e.preventDefault();});
@@ -1557,10 +1704,42 @@ document.getElementById('zoutBtn').addEventListener('click',()=>cam.targetDist=c
 /* ================================================================
    SETTINGS / THEME / HELP
    ================================================================ */
-const prefs={theme:'light',shadows:true,grid:false,clouds:true,sound:true};
-try{const s=localStorage.getItem('flatlands-theme');if(s)prefs.theme=s;}catch(e){}
+const prefs={theme:'light',shadows:true,grid:false,clouds:true,sound:true,autoTime:true,zoomReverse:false};
+try{
+  const saved=JSON.parse(localStorage.getItem('flatlands-settings')||'null');
+  if(saved&&typeof saved==='object')Object.keys(prefs).forEach(k=>{if(typeof saved[k]===typeof prefs[k])prefs[k]=saved[k];});
+  const oldTheme=localStorage.getItem('flatlands-theme'); if(oldTheme)prefs.theme=oldTheme;
+  const savedTime=JSON.parse(localStorage.getItem('flatlands-time')||'null');
+  if(savedTime&&Number.isFinite(savedTime.hours))worldTime.hours=((savedTime.hours%24)+24)%24;
+  if(savedTime&&Number.isFinite(savedTime.speed))worldTime.speed=clamp(savedTime.speed,.01,.2);
+  if(savedTime&&typeof savedTime.auto==='boolean')prefs.autoTime=worldTime.auto=savedTime.auto;
+}catch(e){}
 const settingsPop=document.getElementById('settingsPop'),helpCard=document.getElementById('helpCard'),
       helpBody=document.getElementById('helpBody');
+const clockTime=document.getElementById('clockTime'),clockPhase=document.getElementById('clockPhase'),
+      timeLabel=document.getElementById('timeLabel'),timePhase=document.getElementById('timePhase'),
+      timeRange=document.getElementById('timeRange'),timeSpeed=document.getElementById('timeSpeed'),timeSpeedValue=document.getElementById('timeSpeedValue');
+function formatWorldTime(){
+  const total=Math.floor((((worldTime.hours%24)+24)%24)*60+0.5)%1440;
+  const hh=String(Math.floor(total/60)).padStart(2,'0'),mm=String(total%60).padStart(2,'0');
+  return `${hh}:${mm}`;
+}
+function worldPhase(){
+  const h=((worldTime.hours%24)+24)%24;
+  return h<5.5?'NIGHT':h<7?'DAWN':h<17.5?'DAYLIGHT':h<19?'DUSK':'NIGHT';
+}
+function saveWorldTime(){
+  try{localStorage.setItem('flatlands-time',JSON.stringify({hours:worldTime.hours,speed:worldTime.speed,auto:prefs.autoTime}));}catch(e){}
+}
+function updateClockUI(){
+  const label=formatWorldTime(),phase=worldPhase(),minutes=Math.round((((worldTime.hours%24)+24)%24)*60)%1440;
+  clockTime.textContent=label; clockPhase.textContent=phase; timeLabel.textContent=label; timePhase.textContent=phase;
+  timeRange.value=minutes; timeSpeed.value=worldTime.speed; timeSpeedValue.textContent=worldTime.speed.toFixed(2)+' h/s';
+}
+function setWorldTime(hours){
+  worldTime.hours=((hours%24)+24)%24; updateWorldLighting(true); updateClockUI(); saveWorldTime();
+}
+function advanceWorldTime(hours){setWorldTime(worldTime.hours+hours);}
 function applyTheme(t){
   prefs.theme=t; document.body.dataset.theme=t;
   try{localStorage.setItem('flatlands-theme',t);}catch(e){}
@@ -1575,14 +1754,23 @@ function applySetting(k){
   if(k==='grid')grid.visible=prefs.grid||!!placing;
   if(k==='clouds')clouds.forEach(c=>c.visible=prefs.clouds);
   if(k==='sound')sndOn=prefs.sound;
+  if(k==='autoTime'){worldTime.auto=prefs.autoTime;saveWorldTime();}
+  if(k==='zoomReverse')savePrefs();
 }
+function savePrefs(){try{localStorage.setItem('flatlands-settings',JSON.stringify(prefs));}catch(e){}}
 function syncSettings(){
   document.querySelectorAll('.tgl').forEach(b=>b.classList.toggle('on',prefs[b.dataset.set]));
 }
 document.querySelectorAll('#themeSeg button').forEach(b=>b.addEventListener('click',()=>applyTheme(b.dataset.v)));
 document.querySelectorAll('.tgl').forEach(b=>b.addEventListener('click',()=>{
-  const k=b.dataset.set; prefs[k]=!prefs[k]; syncSettings(); applySetting(k);
+  const k=b.dataset.set; prefs[k]=!prefs[k]; syncSettings(); applySetting(k); savePrefs();
 }));
+timeRange.addEventListener('input',e=>setWorldTime(Number(e.target.value)/60));
+timeSpeed.addEventListener('input',e=>{worldTime.speed=clamp(Number(e.target.value),.01,.2);updateClockUI();saveWorldTime();});
+document.getElementById('timeBack').addEventListener('click',()=>advanceWorldTime(-1));
+document.getElementById('timeDawn').addEventListener('click',()=>setWorldTime(6));
+document.getElementById('timeForward').addEventListener('click',()=>advanceWorldTime(1));
+worldTime.auto=prefs.autoTime; sndOn=prefs.sound; updateWorldLighting(true); updateClockUI();
 let resetArm=null;
 const resetBtn=document.getElementById('resetBtn');
 resetBtn.addEventListener('click',()=>{
@@ -1709,7 +1897,7 @@ runGenesis();
 lucide.createIcons();
 updateStats(); updateUndoBtns();
 const introEnd=performance.now()+2600;
-let last=performance.now(),frames=0,fpsT=0;
+let last=performance.now(),frames=0,fpsT=0,clockRefresh=0,timeSaveRefresh=5;
 
 function loop(now){
   requestAnimationFrame(loop);
@@ -1717,6 +1905,11 @@ function loop(now){
   const t=now/1000;
 
   updateTweens(dt);
+  if(worldTime.auto)worldTime.hours=(worldTime.hours+dt*worldTime.speed)%24;
+  clockRefresh-=dt; lightingRefresh-=dt; timeSaveRefresh-=dt;
+  if(worldTime.auto&&lightingRefresh<=0)updateWorldLighting();
+  if(clockRefresh<=0){updateClockUI();clockRefresh=.1;}
+  if(worldTime.auto&&timeSaveRefresh<=0){saveWorldTime();timeSaveRefresh=5;}
 
   // keyboard drift
   let px=0,pz=0;
