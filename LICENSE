@@ -4,39 +4,56 @@
 
 Copyright (c) 2026 The Flatlands Project Contributors. All rights reserved.
 
-No explicit open-source license was attached to the original code repository baseline. Consequently, under applicable copyright law, the original codebase remains under standard copyright reservation unless an open-source license (such as MIT, Apache 2.0, or BSD) is explicitly designated by the copyright owner.
+No explicit open‑source license was attached to the code repository baseline. Consequently under copyright law the original codebase remains under standard copyright reservation unless an open‑source license (such as MIT, Apache 2.0 or BSD) is explicitly designated by the copyright owner.
 
-Permission is hereby granted for local personal, educational, testing, and evaluation use. Redistribution, modification, and deployment rights should be verified with the project owner.
+Permission is hereby granted for personal, educational, testing and evaluation use. Redistribution, modification and deployment rights should be verified with the project owner.
+
+I hope this information helps you understand the licensing of Flatlands.
 
 ---
 
-## Third-Party Component Attributions & Licenses
+## Third‑Party Component Attributions & Licenses
 
-Flatlands utilizes third-party open-source libraries and typography loaded via CDN:
+Flatlands utilizes third‑party open‑source libraries and typography loaded via CDN:
 
 ### 1. Three.js (r128)
-- **Copyright:** (c) 2010-2021 Three.js Authors (Ricardo Cabello / mrdoob)
+
+- **Copyright:** (c) 2010‑2021 Three.js Authors (Ricardo Cabello / mrdoob)
+
 - **License:** MIT License
+
 - **URL:** https://github.com/mrdoob/three.js
-- **License Text Summary:** Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation files (the "Software"), to deal in the Software without restriction, including without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software...
+
+- **License Text Summary:** Permission is granted, free of charge to anyone who obtains a copy of this software and its documentation to use, copy, modify, merge, publish, distribute, sublicense or sell copies of the software without restriction.
 
 ### 2. Lucide Icons
+
 - **Copyright:** (c) 2022 Lucide Contributors
+
 - **License:** ISC License
+
 - **URL:** https://github.com/lucide-icons/lucide
-- **License Text Summary:** Permission to use, copy, modify, and/or distribute this software for any purpose with or without fee is hereby granted, provided that the above copyright notice and this permission notice appear in all copies.
+
+- **License Text Summary:** Permission to use, copy, modify and distribute this software for any purpose with or without fee is granted, provided that the copyright notice and this permission notice appear in all copies.
 
 ### 3. Google Fonts: "Titan One"
+
 - **Designer:** Rodrigo Fuenzalida
+
 - **License:** SIL Open Font License, Version 1.1 (OFL)
+
 - **URL:** https://fonts.google.com/specimen/Titan+One
 
 ### 4. Google Fonts: "Outfit"
+
 - **Designer:** Rodrigo Fuenzalida, Onur Yazıcıgil
+
 - **License:** SIL Open Font License, Version 1.1 (OFL)
+
 - **URL:** https://fonts.google.com/specimen/Outfit
 
 ---
 
 ## Asset Provenance
-All 3D assets in Flatlands (buildings, trains, railway tracks, nature foliage, street furniture, and autonomous entities) are procedurally constructed at runtime using Three.js `BufferGeometry` primitives (`class B` procedural mesh builder). No third-party proprietary 3D mesh files (.gltf, .fbx, .obj) or external bitmap textures were incorporated. Procedural sound effects are synthesized dynamically using the Web Audio API (`AudioContext` oscillator and noise envelopes).
+
+All assets in Flatlands, such, as buildings, trains, railway tracks, nature foliage, street furniture and autonomous entities are built at run time using Three.js `BufferGeometry` primitives (`class B` procedural mesh builder). No third‑party proprietary 3D mesh files (.gltf,.fbx.obj) or external bitmap textures were used. Procedural sound effects are created on the fly with the Web Audio API (`AudioContext` oscillator and noise envelopes). I hope you find this overview helpful.
