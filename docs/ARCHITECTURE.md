@@ -130,9 +130,19 @@ When a rail tile is placed or modified:
 
 ### Train Waypoint Navigation
 - **Locomotive Engine:** Follows discrete waypoint lines along track centers.
-- **Dead-End Shuttle:** When a train arrives at a track termination without an adjacent rail connection, it reverses direction (`t.dir *= -1`), shuttling back and forth across isolated lines.
+- **Dead-End Shuttle:** When a train arrives at a track termination without an adjacent rail connection, it pauses briefly (`paused`, `retry≈0.7s`), then reverses and shuttles back. An invalid or missing rail never teleports the train.
 - **Carriages & Breadcrumbs:** Trailing passenger and cargo cars sample a continuously refreshed breadcrumb trail of locomotive positions and orientations, preserving spacing and articulation through curves and S-bends. The locomotive's local `-X` front is explicitly mapped to rail travel direction.
 - **Steam Particles:** Procedural billboard puffs spawn from the chimney, rising and dissipating with lifetime-based scale and opacity falloff.
+
+### Connected Track Graph (Phase 1)
+- **Endpoint model:** tile-locked cardinal ports. A segment's endpoints are its `railConns()` neighbour dirs; a link needs exact edge-adjacency plus reciprocal ports (`railReciprocal()`). No slopes, no free splines: every rail sits at `groundYAt => 0.18`, spans `TILE=2`, and is non-rotatable, so discrete adjacency IS the tolerance model. Diagonal touches and gapped tiles never link.
+- **Identities:** stable `uid` per placed segment (`rec.uid`); graph nodes keyed by `uid`, indexed by tile in `railNet.byTile`.
+- **Updates:** `refreshRailsAround()` re-meshes ≤5 tiles and marks `railNet.dirty`; `rebuildRailNet()` (O(R)) runs lazily via `railEnsureFresh()` on the next query. Undo/redo/restore/reset all funnel through place/remove/restore, so derived topology is always recomputed — nothing rail-related is serialized.
+- **Traversal:** trains use `railChooseExit()` — straight-through preferred, else first sorted non-reversing reciprocal port, else reverse. Sorting by `(dx,dz)` gives deterministic tie-breaks; the old `Math.random()` junction pick is gone. Per-frame movement is bounded (`guard<8`); route search is BFS with a visited set over actual links (`railFindRoute()` returns `{path,length}` or `null` when unreachable).
+- **Safety:** `updateTrain`/`nextWaypoint` validate tiles, waypoints, and registry membership; stale trains return early, corrupt targets pause visibly. No NaN, no teleports, no unbounded search.
+- **Queries:** `railSegmentAt/Map`, `railAreConnected`, `railComponentOf`, `railDeadEnds/Branches`, `railStats`, `railValidate` (self/dup/one-way/stale checks).
+- **UI:** selected rail shows link state in `#opCoords`; placement toasts note unconnected/dead-end rails (throttled); optional diagnostics overlay (`N` key) shows green linked / red open endpoint dots.
+- **Limits:** no switches, signals, schedules, or passengers yet. Junction choice is deterministic straight-preference; 4-way crossings circulate deterministically. Future phases can key switch state off `(nodeUid, enterDir)` without rewriting the graph.
 
 ---
 

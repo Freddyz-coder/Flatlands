@@ -12,14 +12,19 @@ any required check is propagated to the command result. `npm run test:core` and
 
 ## Machine-counted assertions
 
-The current suite has **252 machine-counted assertions**. This is an assertion
-count, not a count of scenarios, simulated ticks, or console messages.
+The `npm test` chain holds **270 machine-counted assertions** (233 previously
+documented + 37 new rail assertions). This is an assertion count, not a count
+of scenarios, simulated ticks, or console messages. The two adversarial
+suites (`adversarial-break1.mjs`: 12, `adversarial-break2.mjs`: 20) are NOT
+part of `npm test` and are counted separately (32 extra, 302 grand total
+if combined — do not mix these numbers).
 
 | Suite | File | Assertions | Coverage |
 | --- | --- | ---: | --- |
 | Core systems | `audit/test-core-suite.mjs` | 58 | Placement validation, 900-object cap, rail graph, train recovery, lifecycle maps, wanderers, bins, tunnels, invalid numeric input |
 | Feature expansion | `audit/test-feature-suite.mjs` | 20 | Decor catalog definitions and placement, train heading mapping, clock/time markup, lighting integration, and wheel preference wiring |
 | Gameplay expansion | `audit/test-expansion-suite.mjs` | 54 | Town infrastructure assets (station, shop, bridge, road, fountain, clocktower), elevation layers, walkSpots registration, dynamic weather engine & lighting, NPC behavioral purpose (dogs, ducks, citizens), UI search/category tabs, duplication hotkey (Ctrl+D) |
+| Connected railway | `audit/test-rail-suite.mjs` | 37 | Tile-port topology, reciprocal links, BFS routes, deterministic junctions, train traversal/wagons/dead-ends/sabotage/loops, undo-redo-rebuild |
 | History stress | `audit/test-history-stress.mjs` | 15 | Multi-command undo/redo, branch truncation, deletion restoration, history cap |
 | Simulation stress | `audit/stress-suite.mjs` | 13 | Saturation, crowd updates, train/restore churn, transforms |
 | Wall guard | `audit/test-guard.mjs` | 2 | No wall occupancy for 12,000 ticks and escape through a one-tile gap |
@@ -42,6 +47,7 @@ browser test fetches Three.js from a CDN or assumes a developer-home Firefox pat
 node audit/test-core-suite.mjs
 node audit/test-feature-suite.mjs
 node audit/test-expansion-suite.mjs
+node audit/test-rail-suite.mjs
 node audit/test-history-stress.mjs
 node audit/stress-suite.mjs
 node audit/test-guard.mjs

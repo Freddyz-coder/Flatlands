@@ -58,3 +58,9 @@ This document provides a transparent record of verified edge cases, environment-
 - **Testing Condition:** The Node.js test harness (`audit/core.mjs`) extracts game logic from `3dsandbox.html` and runs it without a full browser environment.
 - **Limitation:** The harness strips certain rendering-only initializations (e.g., `scene.fog`) to focus on game logic. Adversarial tests that check rendering state (like fog near/far bounds) are harness-aware and skip those checks when running in the harness.
 - **Result:** All 9 test suites pass (`npm test` exits code 0). Adversarial break tests (`audit/adversarial-break1.mjs`, `audit/adversarial-break2.mjs`) pass with harness-aware adjustments.
+
+### 2.5 Railway Phase 1 Verification Gap (2026-10-10)
+- **Condition:** The Phase-1 patch was authored in a container with no `node` binary on PATH (`sh: node: command not found`) and no Playwright Firefox. No suite — old or new, Node or browser — could be executed here.
+- **Impact:** The 37 new rail assertions are statically tallied `ok()` calls, not executed results. Regression status of the 233 pre-existing assertions is unverified in this environment. Real-browser WebGL, HUD, and performance checks are unexecuted.
+- **Mitigation:** the new suite is Node-only (no DOM/WebGL), uses the same `buildCore()` harness as existing suites, and touches only additive rail APIs plus narrow, reviewed edits (junction determinism, waypoint guards, placement mesh order, selection text, `N` overlay). Still: run `npm test` on a machine with Node + Firefox before calling this verified.
+- **Next:** Phase 2 (switches/routing UI) should not start until `npm test` + browser E2E are green against this tree.

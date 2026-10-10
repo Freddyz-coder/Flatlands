@@ -988,6 +988,160 @@ function axisOf(conns){
   const hZ=conns.some(d=>d.z===1)&&conns.some(d=>d.z===-1);
   if(hX&&!hZ)return 0; if(hZ&&!hX)return Math.PI/2; return null;
 }
+/* RAIL NET Phase 1: tile-locked track graph. Endpoints are cardinal
+   tile-edge ports; a link needs exact edge-adjacency + reciprocal
+   ports. Derived state only — rebuilt from groundMap, never saved. */
+const railNet={nodes:new Map(),byTile:new Map(),comps:new Map(),nextComp:1,dirty:true};
+function railTileKey(x,z){return x+','+z;}
+function railSortedPorts(conns){return conns.slice().sort((a,b)=>(a.x-b.x)||(a.z-b.z));}
+function railReciprocal(x,z,dx,dz){
+  if(!Number.isInteger(x)||!Number.isInteger(z))return false;
+  const a=groundMap.get(railTileKey(x,z)),b=groundMap.get(railTileKey(x+dx,z+dz));
+  if(!a||!b||!a.def.rail||!b.def.rail)return false;
+  if(dx===0&&dz===0)return false;
+  const ap=railConns(x,z),bp=railConns(x+dx,z+dz);
+  return ap.some(d=>d.x===dx&&d.z===dz)&&bp.some(d=>d.x===-dx&&d.z===-dz);
+}
+function railNodeOf(rec){return rec?railNet.nodes.get(rec.uid):undefined;}
+function railUpsertNode(rec){
+  if(!rec||!rec.def||!rec.def.rail||!rec.tile)return null;
+  const x=rec.tile.x,z=rec.tile.z;
+  if(!Number.isInteger(x)||!Number.isInteger(z))return null;
+  const ports=railSortedPorts(railConns(x,z));
+  let n=railNet.nodes.get(rec.uid);
+  if(!n){n={uid:rec.uid,x,z,ports,links:[],comp:-1,deadEnd:true,branch:false};railNet.nodes.set(rec.uid,n);}
+  else{n.x=x;n.z=z;n.ports=ports;}
+  railNet.byTile.set(railTileKey(x,z),rec.uid);
+  return n;
+}
+function railLinkPair(a,b){
+  if(a===b||a==null||b==null)return;
+  const na=railNet.nodes.get(a),nb=railNet.nodes.get(b);
+  if(!na||!nb)return;
+  if(!na.links.includes(b))na.links.push(b);
+  if(!nb.links.includes(a))nb.links.push(a);
+}
+function railRecomputeLinks(){
+  for(const n of railNet.nodes.values())n.links.length=0;
+  const uids=[...railNet.nodes.keys()].sort((a,b)=>a-b);
+  for(const uid of uids){
+    const n=railNet.nodes.get(uid);
+    if(!n)continue;
+    for(const p of n.ports){
+      if(!railReciprocal(n.x,n.z,p.x,p.z))continue;
+      const v=railNet.byTile.get(railTileKey(n.x+p.x,n.z+p.z));
+      if(v!=null&&v!==uid)railLinkPair(uid,v);
+    }
+    for(const v of n.links.slice()){
+      const m=railNet.nodes.get(v);
+      if(!m||!m.links.includes(uid))n.links.splice(n.links.indexOf(v),1);
+    }
+    n.links.sort((a,b)=>a-b);
+    n.deadEnd=n.links.length<=1;
+    n.branch=n.links.length>=3;
+  }
+}
+function railRecomputeComps(){
+  railNet.comps.clear();
+  const seen=new Set();
+  for(const uid of [...railNet.nodes.keys()].sort((a,b)=>a-b)){
+    if(seen.has(uid))continue;
+    const comp=railNet.nextComp++;
+    const members=[];
+    const q=[uid];seen.add(uid);
+    let guard=0;
+    while(q.length&&guard++<10000){
+      const c=q.pop();members.push(c);
+      const n=railNet.nodes.get(c);
+      if(n)n.comp=comp;
+      for(const v of (n?n.links:[]))if(!seen.has(v)){seen.add(v);q.push(v);}
+    }
+    members.sort((a,b)=>a-b);
+    railNet.comps.set(comp,members);
+  }
+}
+function railPruneStale(){
+  for(const [uid,n] of [...railNet.nodes]){
+    const rec=groundMap.get(railTileKey(n.x,n.z));
+    if(!rec||rec.uid!==uid||!rec.def.rail)railNet.nodes.delete(uid);
+  }
+  railNet.byTile.clear();
+  for(const rec of objects){
+    if(rec&&rec.def&&rec.def.rail&&rec.tile)railNet.byTile.set(railTileKey(rec.tile.x,rec.tile.z),rec.uid);
+  }
+}
+function rebuildRailNet(){
+  railPruneStale();
+  for(const rec of objects)if(rec&&rec.def&&rec.def.rail)railUpsertNode(rec);
+  railRecomputeLinks();
+  railRecomputeComps();
+  railNet.dirty=false;
+}
+function railEnsureFresh(){if(railNet.dirty)rebuildRailNet();}
+function railSegmentAt(tx,tz){railEnsureFresh();const u=railNet.byTile.get(railTileKey(tx,tz));return u==null?null:railNet.nodes.get(u)||null;}
+function railLinksOf(tx,tz){const n=railSegmentAt(tx,tz);return n?n.links.slice():[];}
+function railComponentOf(tx,tz){const n=railSegmentAt(tx,tz);return n?n.comp:-1;}
+function railAreConnected(ax,az,bx,bz){
+  const a=railSegmentAt(ax,az),b=railSegmentAt(bx,bz);
+  return !!a&&!!b&&a.comp!==-1&&a.comp===b.comp;
+}
+function railDeadEnds(){railEnsureFresh();return [...railNet.nodes.values()].filter(n=>n.deadEnd).map(n=>({uid:n.uid,x:n.x,z:n.z,links:n.links.length})).sort((a,b)=>a.uid-b.uid);}
+function railBranches(){railEnsureFresh();return [...railNet.nodes.values()].filter(n=>n.branch).map(n=>({uid:n.uid,x:n.x,z:n.z,links:n.links.length})).sort((a,b)=>a.uid-b.uid);}
+function railStats(){
+  railEnsureFresh();
+  let edges=0;for(const n of railNet.nodes.values())edges+=n.links.length;
+  return {segments:railNet.nodes.size,edges:edges/2,components:railNet.comps.size,deadEnds:railDeadEnds().length,branches:railBranches().length};
+}
+function railFindRoute(ax,az,bx,bz){
+  railEnsureFresh();
+  const s=railSegmentAt(ax,az),g=railSegmentAt(bx,bz);
+  if(!s||!g)return null;
+  if(s.uid===g.uid)return {path:[{x:s.x,z:s.z}],length:0};
+  if(s.comp===-1||s.comp!==g.comp)return null;
+  const prev=new Map([[s.uid,-1]]),q=[s.uid];
+  const cap=railNet.nodes.size+8;
+  let guard=0;
+  while(q.length&&guard++<cap*4){
+    const c=q.shift();
+    if(c===g.uid)break;
+    const n=railNet.nodes.get(c);
+    if(!n)continue;
+    for(const v of n.links)if(!prev.has(v)){prev.set(v,c);q.push(v);}
+  }
+  if(!prev.has(g.uid))return null;
+  const uids=[];let c=g.uid,sg=0;
+  while(c!==-1&&sg++<cap+8){uids.push(c);c=prev.get(c);}
+  uids.reverse();
+  return {path:uids.map(u=>{const n=railNet.nodes.get(u);return{x:n.x,z:n.z};}),length:uids.length-1};
+}
+function railChooseExit(tx,tz,enterX,enterZ){
+  railEnsureFresh();
+  const n=railSegmentAt(tx,tz);
+  if(!n||!n.links.length)return null;
+  const straight=n.ports.find(p=>p.x===enterX&&p.z===enterZ&&railReciprocal(tx,tz,p.x,p.z));
+  if(straight)return {x:straight.x,z:straight.z};
+  for(const p of n.ports){
+    if(p.x===-enterX&&p.z===-enterZ)continue;
+    if(railReciprocal(tx,tz,p.x,p.z))return {x:p.x,z:p.z};
+  }
+  return {x:-enterX,z:-enterZ};
+}
+function railValidate(){
+  railEnsureFresh();
+  const issues=[];
+  for(const n of railNet.nodes.values()){
+    if(n.links.includes(n.uid))issues.push('self:'+n.uid);
+    if(new Set(n.links).size!==n.links.length)issues.push('dup:'+n.uid);
+    for(const v of n.links){
+      const m=railNet.nodes.get(v);
+      if(!m){issues.push('dangling:'+n.uid+'->'+v);continue;}
+      if(!m.links.includes(n.uid))issues.push('oneway:'+n.uid+'->'+v);
+    }
+    const rec=groundMap.get(railTileKey(n.x,n.z));
+    if(!rec||rec.uid!==n.uid)issues.push('stale:'+n.uid);
+  }
+  return {ok:issues.length===0,issues};
+}
 function rebuildRail(r){
   r.conns=railConns(r.tile.x,r.tile.z);
   const old=r.group.children[0];
@@ -1002,6 +1156,7 @@ function refreshRailsAround(tx,tz,self=true){
     const r=groundMap.get(key(tx+dx,tz+dz));
     if(r&&r.def.rail) rebuildRail(r);
   }
+  railNet.dirty=true;
   const tun=objMap.get(key(tx,tz)),rail=groundMap.get(key(tx,tz));
   if(tun&&tun.defId==='tunnel'&&rail&&rail.def.rail){
     const ax=axisOf(railConns(tx,tz));
@@ -1020,7 +1175,7 @@ function place(defId,tx,tz,rot=0,opts={}){
   if(!Number.isInteger(tx)||!Number.isInteger(tz)||!Number.isFinite(rot))return null;
   if(objects.length>=MAXO||!canPlace(def,tx,tz))return null;
   let group;
-  if(def.rail){ group=new THREE.Group(); group.add(buildRailMesh(railConns(tx,tz))); }
+  if(def.rail){ group=new THREE.Group(); }
   else group=def.build();
   const rec={uid:++UID,defId,def,tile:{x:tx,z:tz},rot,scale:1,group,kind:def.entity?'entity':'static'};
   group.rotation.y=rot; group.position.set(t2w(tx),0,t2w(tz));
@@ -1037,7 +1192,7 @@ function place(defId,tx,tz,rot=0,opts={}){
     const k=key(tx,tz);
     if(def.layer==='ground'){ groundMap.set(k,rec); if(def.walk)walkSpots.push(rec); }
     else{ objMap.set(k,rec); if(defId==='trashbin')bins.push(rec); if(def.walk)walkSpots.push(rec); }
-    if(def.rail) refreshRailsAround(tx,tz,false);
+    if(def.rail){ group.add(buildRailMesh(railConns(tx,tz))); refreshRailsAround(tx,tz,false); }
     if(defId==='tunnel'){ const g=groundMap.get(k); if(g&&g.def.rail){const ax=axisOf(railConns(tx,tz));if(ax!==null){rec.rot=ax;group.rotation.y=ax;}} }
   }
   registerPick(rec); objects.push(rec); updateStats();
@@ -1088,7 +1243,7 @@ function restoreRec(rec){
 // Map that axis to the rail travel vector so the engine leads every segment.
 function trainYawFor(dir){ return Math.atan2(dir.z,-dir.x); }
 function initTrain(rec,tx,tz){
-  const conns=railConns(tx,tz);
+  const conns=railSortedPorts(railConns(tx,tz));
   const dir=conns.length?conns[0]:DIRS[0];
   const cx=t2w(tx),cz=t2w(tz);
   rec.pos={x:cx,z:cz}; rec.D=0; rec.dirx=dir.x; rec.dirz=dir.z;
@@ -1108,21 +1263,22 @@ function initTrain(rec,tx,tz){
 }
 function pruneTrail(rec){ while(rec.trail.length>2&&rec.trail[1].d<rec.D-9)rec.trail.shift(); }
 function nextWaypoint(rec){
+  if(!rec||!rec.tile||!Number.isFinite(rec.tile.x)||!Number.isFinite(rec.tile.z)){rec.paused=true;rec.retry=0.7;return;}
+  if(!rec.enter||!Number.isFinite(rec.enter.x)||!Number.isFinite(rec.enter.z))rec.enter={x:1,z:0};
+  if(!rec.travel||!Number.isFinite(rec.travel.x)||!Number.isFinite(rec.travel.z))rec.travel={x:1,z:0};
   if(rec.at==='center'){
     if(!isRailAt(rec.tile.x,rec.tile.z)){rec.paused=true;rec.retry=0.7;return;}
-    const conns=railConns(rec.tile.x,rec.tile.z);
-    const opts=conns.filter(d=>!(d.x===-rec.enter.x&&d.z===-rec.enter.z));
-    let dir;
-    const straight=opts.find(d=>d.x===rec.enter.x&&d.z===rec.enter.z);
-    if(straight)dir=straight;
-    else if(opts.length)dir=opts[(Math.random()*opts.length)|0];
-    else dir={x:-rec.enter.x,z:-rec.enter.z}; // dead end: shuttle back
+    const exit=railChooseExit(rec.tile.x,rec.tile.z,rec.enter.x,rec.enter.z);
+    // Deterministic junction choice (straight-through preferred). Closed
+    // loops intentionally circulate; per-frame work is bounded by the
+    // guard in updateTrain and BFS visited-sets in railFindRoute.
+    let dir=exit||{x:-rec.enter.x,z:-rec.enter.z};
     rec.travel=dir;
     rec.wp={x:t2w(rec.tile.x)+dir.x,z:t2w(rec.tile.z)+dir.z};
     rec.at='edge';
   }else{
     const nx=rec.tile.x+rec.travel.x,nz=rec.tile.z+rec.travel.z;
-    if(!isRailAt(nx,nz)){rec.paused=true;rec.retry=0.7;return;}
+    if(!Number.isInteger(nx)||!Number.isInteger(nz)||!inGrid(nx,nz)||!isRailAt(nx,nz)){rec.paused=true;rec.retry=0.7;return;}
     rec.tile={x:nx,z:nz}; rec.enter=rec.travel;
     rec.wp={x:t2w(nx),z:t2w(nz)};
     rec.at='center';
@@ -1142,6 +1298,11 @@ function sampleTrail(rec,d){
   return{x:a.x+(b.x-a.x)*k,z:a.z+(b.z-a.z)*k,dx:(b.x-a.x)/span,dz:(b.z-a.z)/span};
 }
 function updateTrain(rec,dt,t){
+  if(!rec||!objects.includes(rec)||!entities.includes(rec))return; // stale ref: track removed
+  if(!rec.pos||!rec.wp||!rec.trail||!rec.cars)return;
+  if(!Number.isFinite(rec.pos.x)||!Number.isFinite(rec.pos.z)){rec.paused=true;rec.retry=0.7;return;}
+  if(!Number.isFinite(dt)||dt<=0)dt=0.016;
+  if(dt>0.25)dt=0.25;
   const eng=rec.group;
   eng.scale.setScalar(rec.scale);
   let moved=0;
@@ -1151,7 +1312,9 @@ function updateTrain(rec,dt,t){
   }else{
     let step=3.1*dt,guard=0;
     while(step>0&&!rec.paused&&guard++<8){
+      if(!Number.isFinite(rec.wp.x)||!Number.isFinite(rec.wp.z)){rec.paused=true;rec.retry=0.7;break;}
       const dx=rec.wp.x-rec.pos.x,dz=rec.wp.z-rec.pos.z,dist=Math.hypot(dx,dz);
+      if(!Number.isFinite(dist)||dist>HALF*4){rec.paused=true;rec.retry=0.7;break;} // corrupt target: rest
       if(dist<1e-4){ rec.trail.push({x:rec.pos.x,z:rec.pos.z,d:rec.D}); pruneTrail(rec); nextWaypoint(rec); continue; }
       const mv=Math.min(step,dist);
       rec.pos.x+=dx/dist*mv; rec.pos.z+=dz/dist*mv; rec.D+=mv; moved+=mv; step-=mv;
@@ -1583,6 +1746,49 @@ const brackets=(()=>{
   const m=new THREE.LineSegments(geo,new THREE.LineBasicMaterial({color:0x161b22,transparent:true,opacity:.9}));
   m.visible=false; scene.add(m); return m;
 })();
+/* RAIL overlay: restrained endpoint dots for the selected rail only,
+   plus optional full-network diagnostics (key N). Off by default. */
+let railDiag=false;
+const railMarkers=[];
+function setRailMarkers(list){
+  if(typeof scene==='undefined')return;
+  if(typeof document==='undefined'&&railMarkers.length===0&&list.length===0)return;
+  while(railMarkers.length<list.length){
+    const m=new THREE.Mesh(new THREE.SphereGeometry(0.11,10,8),new THREE.MeshBasicMaterial({color:0x39c46a,depthTest:false,transparent:true,opacity:0.95}));
+    m.visible=false;m.renderOrder=5;scene.add(m);railMarkers.push(m);
+  }
+  for(let i=0;i<railMarkers.length;i++){
+    const m=railMarkers[i],it=list[i];
+    if(!it){m.visible=false;continue;}
+    m.visible=true;
+    m.position.set(it.x,0.32,it.z);
+    m.material.color.setHex(it.ok?0x39c46a:0xe0524f);
+  }
+}
+function updateRailOverlay(sel,t){
+  if(typeof document!=='undefined'&&document.__railDiag!=null)railDiag=!!document.__railDiag;
+  if(!railDiag&&!(sel&&sel.def&&sel.def.rail)){if(railMarkers.length)setRailMarkers([]);return;}
+  railEnsureFresh();
+  const list=[];
+  const pushNode=(n)=>{
+    for(const p of n.ports){
+      const ok=railReciprocal(n.x,n.z,p.x,p.z);
+      list.push({x:t2w(n.x)+p.x*0.9,z:t2w(n.z)+p.z*0.9,ok});
+    }
+  };
+  if(railDiag){
+    let count=0;
+    for(const n of railNet.nodes.values()){
+      if(count++>64)break;
+      pushNode(n);
+      if(list.length>128)break;
+    }
+  }else if(sel&&sel.def&&sel.def.rail){
+    const n=railSegmentAt(sel.tile.x,sel.tile.z);
+    if(n)pushNode(n);
+  }
+  setRailMarkers(list.slice(0,128));
+}
 const objpop=document.getElementById('objpop'),opName=document.getElementById('opName'),
       opCoords=document.getElementById('opCoords'),opDup=document.getElementById('opDup'),
       opScale=document.getElementById('opScale'),
@@ -1592,7 +1798,15 @@ const objpop=document.getElementById('objpop'),opName=document.getElementById('o
 function select(rec){
   selected=rec; brackets.visible=true;
   opName.textContent=rec.def.name;
-  if(opCoords)opCoords.textContent=`Tile (${rec.tile.x}, ${rec.tile.z})`;
+  if(opCoords){
+    let txt=`Tile (${rec.tile.x}, ${rec.tile.z})`;
+    if(rec.def&&rec.def.rail){
+      const n=railSegmentAt(rec.tile.x,rec.tile.z);
+      const L=n?n.links.length:railConns(rec.tile.x,rec.tile.z).length;
+      txt+=L<=1?' — stub (dead end)':L===2?' — linked':' — junction ('+L+' links)';
+    }
+    opCoords.textContent=txt;
+  }
   opRotate.style.display=rec.def.rotatable===false?'none':'';
   const noScale=!!rec.def.noScale;
   scaleRow.forEach(el=>el.style.display=noScale?'none':'');
@@ -1762,7 +1976,7 @@ function placeUserAt(tx,tz,quiet){
   else{strokeCmd={t:'multi',recs:[rec]};pushCmd(strokeCmd);}
   dropAnim(rec);
   hideWelcome();
-  if(placing.def.rail)tipOnce('rail','Rails interlock with their neighbours — drag to paint a whole line at once.');
+  if(placing.def.rail)railPlaceFeedback(tx,tz);
   if(placing.defId==='train')tipOnce('train','Your train shuttles between dead ends. Close the loop and it circles forever.');
   if(placing.defId==='tunnel')tipOnce('tunnel','Drop a tunnel onto a straight rail and trains will dive through the hill.');
   if(placing.def.entity&&placing.defId!=='train')tipOnce('life','Living things wander on their own — they love pathways and platforms.');
@@ -1771,6 +1985,18 @@ function shakeGhost(){
   if(!marker||!marker.visible)return;
   const bx=marker.userData.bx||marker.position.x;
   tween(0.2,k=>{marker.position.x=bx+Math.sin(k*Math.PI*6)*0.18*(1-k);});
+}
+let railToastT=0;
+function railPlaceFeedback(tx,tz){
+  tipOnce('rail','Rails interlock with their neighbours — drag to paint a whole line at once.');
+  const now=(typeof performance!=='undefined'&&performance.now)?performance.now():0;
+  if(now-railToastT<2500)return;
+  railToastT=now;
+  railEnsureFresh();
+  const n=railSegmentAt(tx,tz);
+  const L=n?n.links.length:0;
+  if(L===0)toast('Rail placed — not connected yet. Extend the line to link it.','info',2200);
+  else if(L===1)toast('Rail linked on one side — dead end for now.','info',2200);
 }
 function paintMove(e){
   updateGhost(e);
@@ -1946,6 +2172,7 @@ window.addEventListener('keydown',e=>{
     return;
   }
   if(k==='r'){rotateView();return;}
+  if(k==='n'){railDiag=!railDiag;if(typeof document!=='undefined')document.__railDiag=railDiag;toast(railDiag?'Rail diagnostics on — green linked, red open.':'Rail diagnostics off.','info',2200);return;}
   if(k==='escape'){stopPlacing();deselect();closePops();return;}
   if(k==='delete'||k==='backspace'){if(selected){pushCmd({t:'del',rec:selected});removeRec(selected);}return;}
   if(k==='q'||k==='e'){
@@ -2269,6 +2496,7 @@ function loop(now){
       objpop.style.visibility='visible';
     }else objpop.style.visibility='hidden';
   }
+  updateRailOverlay(selected,t);
 
   frames++; fpsT+=dt;
   if(fpsT>=0.5){ statFps.textContent=Math.round(frames/fpsT)+' fps'; frames=0; fpsT=0; }

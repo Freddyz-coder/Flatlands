@@ -41,13 +41,16 @@ export function buildCore(opts = {}) {
     'function refreshPopScale(){}',
     section('/* ================================================================\n   HISTORY — undo / redo', '/* ================================================================\n   INPUT — camera, picking, keys'),
     // API surface
-    '; function updateStats(){} function tipOnce(){} ' +
+    '; function updateStats(){} function tipOnce(){} function toast(){} ' +
     'return { objects, entities, walkSpots, bins, groundMap, objMap, isRailAt, railConns,' +
     ' place, removeRec, restoreRec, canPlace, updateTrain, nextWaypoint, initTrain, trainYawFor,' +
     ' updateWander, pickTargetW, binTick, groundYAt, blockedAt, spawnPuff, updatePuffs,' +
     ' updateTweens, dropAnim, DEFS, GRID, TILE, WORLD, HALF, HB, MAXO, DIRS, key, t2w, w2t, inGrid,' +
     ' history, pushCmd, undo, redo, applyCmd, getHistIdx:()=>histIdx,' +
     ' weather, setWeather, WEATHER_TYPES, worldTime, updateWorldLighting,' +
+    ' railNet, railSegmentAt, railLinksOf, railComponentOf, railAreConnected,' +
+    ' railDeadEnds, railBranches, railStats, railFindRoute, railChooseExit,' +
+    ' railValidate, railReciprocal, rebuildRailNet,' +
     ' scene };',
   ].join('\n');
 
