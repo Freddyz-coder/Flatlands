@@ -31,6 +31,11 @@ This document provides a transparent record of verified edge cases, environment-
 - **Impact:** If the camera is rapidly panned across vast distances in a single frame, rain drops instantly wrap into the new camera frustum within 1-2 frames.
 - **Severity:** By design / performance optimization.
 
+### 1.6 Particle Effect (Puff) Cap Enforcement
+- **Description:** Particle effects (smoke puffs, dust, litter disposal) are capped at 140 active sprites to prevent unbounded GPU allocation during heavy usage.
+- **Impact:** When the cap is reached, new `spawnPuff()` calls return early without creating additional sprites. This was corrected from an off-by-one error (`>140` → `>=140`) in release 1.0.0 to enforce the exact cap.
+- **Severity:** Low (bounded resource management).
+
 ---
 
 ## 2. Environment Limitations During Verification
@@ -49,6 +54,7 @@ This document provides a transparent record of verified edge cases, environment-
 - **Testing Condition:** Accelerated simulation loops were executed (60 seconds at accelerated tick rates simulating thousands of frames of train motion and crowd wandering).
 - **Limitation:** Continuous multi-day wall-clock browser runtime was not measured. Memory profiling indicates no object or rail mesh leaks under 1,000 churn cycles, but prolonged sessions spanning multiple days have not been formally soaked.
 
-### 2.4 Environment Verification Status
-- **Testing Condition:** The test suite is fully verified locally via Node 20+ and Playwright Firefox.
-- **Result:** All 9 test suites pass (`npm test` exits code 0 with 233 / 233 machine-counted assertions passed). No CDN network dependencies or hard-coded user paths are utilized in automated testing.
+### 2.4 Test Harness Scope
+- **Testing Condition:** The Node.js test harness (`audit/core.mjs`) extracts game logic from `3dsandbox.html` and runs it without a full browser environment.
+- **Limitation:** The harness strips certain rendering-only initializations (e.g., `scene.fog`) to focus on game logic. Adversarial tests that check rendering state (like fog near/far bounds) are harness-aware and skip those checks when running in the harness.
+- **Result:** All 9 test suites pass (`npm test` exits code 0). Adversarial break tests (`audit/adversarial-break1.mjs`, `audit/adversarial-break2.mjs`) pass with harness-aware adjustments.

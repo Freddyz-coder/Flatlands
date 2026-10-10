@@ -92,6 +92,11 @@ Flatlands does not load external `.gltf` or `.obj` 3D model files. All 32 asset 
    - **Detail Decor (7):** `shrub`, `flowerbed`, `fence`, `sign`, `crate`, `barrel`, `planter`.
    - **Town Infrastructure (6):** `station` (passenger depot), `shop` (striped awning general store), `clocktower` (belfry tower with clock faces), `bridge` (elevated pedestrian footbridge), `road` (marked asphalt roadway), `fountain` (tiered basin with animated water shimmer).
 
+### Particle Effect System
+- **Puff Sprites:** Transient particle effects (smoke, dust, litter disposal) use `THREE.Sprite` objects with a shared canvas texture. A global `puffs[]` array tracks active puffs.
+- **Cap Enforcement:** `spawnPuff()` enforces a hard cap of 140 active sprites to prevent unbounded GPU allocation. The cap check uses `>= 140` (not `> 140`) to enforce the exact limit.
+- **Lifecycle:** `updatePuffs(dt)` ages puffs, removes expired ones (disposing their materials), and updates positions/scales/opacity each frame.
+
 ---
 
 ## 4. World State & Spatial Indexing

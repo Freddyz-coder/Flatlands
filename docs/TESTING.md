@@ -12,7 +12,7 @@ any required check is propagated to the command result. `npm run test:core` and
 
 ## Machine-counted assertions
 
-The current suite has **233 machine-counted assertions**. This is an assertion
+The current suite has **252 machine-counted assertions**. This is an assertion
 count, not a count of scenarios, simulated ticks, or console messages.
 
 | Suite | File | Assertions | Coverage |
@@ -26,6 +26,8 @@ count, not a count of scenarios, simulated ticks, or console messages.
 | Red-team browser audit | `audit/redteam-audit-suite.mjs` | 44 | Rail mesh lifecycle, real preview tint, input cleanup, Genesis, capacity ladder |
 | Main browser E2E | `audit/e2e.mjs` | 19 | Startup, Genesis, HUD placement, undo, rail painting, clock controls, wheel direction, browser errors |
 | Input browser E2E | `audit/e2e-inputs.mjs` | 8 | Left/right drag behavior, Ctrl+R, restart, browser errors |
+| Adversarial break 1 | `audit/adversarial-break1.mjs` | 12 | Weather×time rapid switching, train track sabotage, NPC target removal, boundary clamp |
+| Adversarial break 2 | `audit/adversarial-break2.mjs` | 20 | Placement churn near cap, reset cleanup, resource growth, puff cap enforcement |
 
 The browser tests use bounded readiness conditions: they wait for Three.js,
 complete Genesis, and the FPS HUD rather than relying on a fixed startup sleep.

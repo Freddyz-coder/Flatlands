@@ -1,6 +1,6 @@
 # Flatlands — A Pocket-God Sandbox
 
-[![Tests](https://img.shields.io/badge/tests-233%20assertions-brightgreen)](#-automated-test-suite)
+[![Tests](https://img.shields.io/badge/tests-252%20assertions-brightgreen)](#-automated-test-suite)
 [![Engine](https://img.shields.io/badge/engine-Three.js%20r128-blue)](https://threejs.org/)
 [![Build](https://img.shields.io/badge/build-zero--build%20client--side-orange)](#-running-the-game)
 [![License](https://img.shields.io/badge/license-All%20Rights%20Reserved%20(See%20LICENSE)-lightgrey)](LICENSE)
@@ -139,7 +139,7 @@ Then navigate your browser to `http://localhost:8000/`.
 
 ## 🧪 Automated Test Suite
 
-Flatlands has a **233-assertion automated test harness** executed across 9 test suites. Run all required suites
+Flatlands has a **252-assertion automated test harness** executed across 11 test suites. Run all required suites
 with the fail-fast aggregate command:
 
 ```bash

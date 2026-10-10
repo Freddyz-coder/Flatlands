@@ -1358,7 +1358,7 @@ const puffTex=(()=>{
 })();
 const puffs=[];
 function spawnPuff(x,y,z,o={}){
-  if(puffs.length>140)return;
+  if(puffs.length>=140)return;
   const m=new THREE.SpriteMaterial({map:puffTex,color:o.color||0xffffff,transparent:true,opacity:o.op||0.85,depthWrite:false});
   const s=new THREE.Sprite(m); s.position.set(x,y,z); scene.add(s);
   puffs.push({s,vx:o.vx||0,vy:o.vy===undefined?0.9:o.vy,vz:o.vz||0,life:o.life||0.7,age:0,
