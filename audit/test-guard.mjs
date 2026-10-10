@@ -19,4 +19,14 @@ for (let i = 0; i < 12000; i++) {
 }
 console.log('ticks inside a wall tile:', insideWall, '/ 12000');
 console.log('escaped via hole:', escaped);
-console.log(insideWall === 0 ? 'PASS: never inside wall tile' : 'FAIL: ended up inside a wall');
+let fail=0;
+function assert(condition,name,detail){
+  if(condition)console.log(`PASS: ${name}${detail?` (${detail})`:''}`);
+  else{fail++;console.error(`FAIL: ${name}${detail?` (${detail})`:''}`);}
+}
+assert(insideWall===0,'wanderer never occupies a wall tile',`${insideWall}/12000 ticks`);
+// This second invariant prevents a vacuous pass where movement is disabled or an
+// entity remains permanently trapped at the centre.
+assert(escaped,'wanderer escapes the pen through its one-tile opening');
+console.log(`WALL GUARD SUMMARY: ${2-fail} passed, ${fail} failed.`);
+process.exitCode=fail?1:0;

@@ -35,15 +35,19 @@ console.log('== 1. placement guard matrix (canPlace) ==');
   ok(!canPlace(d.human, 40, 41), 'human cannot be placed where a static object exists');
   // train needs rail
   ok(!canPlace(d.train, 40, 45), 'train on bare ground rejected');
-  // API-level guard: place() on bare ground must NOT register a train object.
-  // (Train placement returns a record adjacent to rail for its own sim init, but
-  // the browser UI always passes canPlace first — verify objects count is unchanged.)
+  // API-level guard: callers outside the UI cannot bypass train placement rules.
   const offRailBefore = C.objects.length;
   const bad = C.place('train', 10, 12); // bare ground
-  ok(bad !== null, 'place() returns a train rec even off-rail (sim-only record)');
-  eq(C.entities.filter(e => e.defId === 'train').length, 1, 'exactly ONE train registered after off-rail attempt + on-rail place');
-  eq(C.objects.length, offRailBefore + 1, 'net +1 object (the on-rail train), no orphan registered');
+  ok(bad === null, 'place() rejects a train on bare ground');
+  eq(C.entities.filter(e => e.defId === 'train').length, 0, 'off-rail train does not register an entity');
+  eq(C.objects.length, offRailBefore, 'off-rail train leaves the object registry unchanged');
   ok(!!C.place('train', 40, 40), 'train placed on a rail succeeds');
+  const beforeInvalid = C.objects.length;
+  ok(C.place('tree', NaN, 10) === null, 'place() rejects NaN tile coordinates');
+  ok(C.place('tree', Infinity, 10) === null, 'place() rejects infinite tile coordinates');
+  ok(C.place('tree', 10.5, 10) === null, 'place() rejects fractional tile coordinates');
+  ok(C.place('tree', 10, 10, Infinity) === null, 'place() rejects non-finite rotation');
+  eq(C.objects.length, beforeInvalid, 'invalid placement inputs leave the registry unchanged');
 }
 console.log('== 2. object limit ==');
 {
@@ -164,30 +168,21 @@ console.log('== 6. wanderers: blockage, boundary, certainty ==');
   const h2 = T2.place('human', 15, 15);
   for (let i = 0; i < 60; i++) T2.updateWander(h2, 0.016, i / 60);
   T2.removeRec(h2);
-  T2.updateWander(h2, 0.016, 60); // should not crash when called on a removed entity
-  ok(true, 'updateWander on removed entity did not throw');
-  // cleanup
+  T2.updateWander(h2, 0.016, 60); // defensive no-throw probe
+  ok(!T2.objects.includes(h2) && !T2.entities.includes(h2), 'removed entity has no active registry references');
 }
 console.log('== 7. litter: fill bin at close range, bbox sanity ==');
 {
-  // probabilistic: a walking citizen within ~1.14 world units of a bin triggers it.
-  // A common setup (bin on or near a path a citizen crosses) triggers within 90 s
-  // most of the time, but not every run — accept behaviour instead of a random bit.
+  // Exercise the real bin interaction deterministically rather than treating a
+  // random long-running simulation as a pass regardless of outcome.
   const T = await buildCore();
   T.place('pathway', 25, 25);
   T.place('trashbin', 25, 25);
-  const h = T.place('human', 28, 25);
-  let ticks = 0;
-  for (let i = 0; i < 5400; i++) { // 90 s — enough for multiple idle/walk cycles
-    T.updateWander(h, 0.016, i / 60);
-    if (h.binCd > 0) ticks++;
-  }
-  console.log('  binCd ticks observed:', ticks);
-  ok(ticks >= 0, 'binTick sim ran without crash (probabilistic trigger, ticks=' + ticks + ')');
-  //并不会 really check complexity — just ensure no crash while many puffs live
-  for (let i = 0; i < 100; i++) C.spawnPuff(i, 1, i, { life: 0.2 });
-  C.updatePuffs(0.2);
-  ok(true, 'massed puff spawn/update tolerated');
+  const h = T.place('human', 26, 25);
+  h.pos = { x: T.t2w(25) + 0.5, z: T.t2w(25) };
+  h.ai.mode = 'walk';
+  T.binTick(h);
+  ok(h.binCd > 0 && h.ai.mode === 'idle', 'nearby walking human uses the trash bin');
 }
 console.log('== 8. tunnel snapping to straight rails ==');
 {
@@ -224,11 +219,9 @@ console.log('== 10. same-tile human vs. static object dedupe ==');
   const T = await buildCore();
   T.place('bench', 60, 60);
   const h = T.place('human', 60, 60);
-  ok(h !== null, 'human placement on occupied tile returns null (guard) — see canPlace lifelayer');
-  eq(T.objects.filter(o => o.tile.x === 60 && o.tile.z === 60 && o.defId === 'human').length, humanCount(T, 60, 60), 'human placed exactly once or not at all');
-  function humanCount(T2, x, z) {
-    return T2.objects.filter(o => o.tile.x === x && o.tile.z === z && o.defId === 'human').length;
-  }
+  ok(h === null, 'human placement on an occupied tile is rejected');
+  eq(T.objects.length, 1, 'rejected life placement leaves the registry unchanged');
+  eq(T.objMap.get(T.key(60, 60)).defId, 'bench', 'rejected life placement preserves the existing object map entry');
 }
 
 console.log('\n=================================================');

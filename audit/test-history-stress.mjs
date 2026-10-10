@@ -1,70 +1,8 @@
-// History stress: extract the browser history + transform blocks verbatim,
-// wire them against a DOM stub and the core sim state, and run adversarial
-// undo/redo sequences including rapid interleaved edits.
+// History stress: runs the shipped browser history block extracted by core.mjs
+// against the actual placement/removal records used by the game.
 import { buildCore } from './core.mjs';
-import { script } from './extract.mjs';
-import { createRequire } from 'module';
-import vm from 'vm';
-
-function histBlock() {
-  const i = script.indexOf('/* ================================================================\n   HISTORY — undo / redo\n   ================================================================ */');
-  if (i < 0) throw new Error('history block not found');
-  const j = script.indexOf('undoBtn.addEventListener', i);
-  if (j < 0) throw new Error('history block end not found');
-  return script.slice(i, script.indexOf('\n', j + 100));
-}
-
-function transformBlock() {
-  const i = script.indexOf('const objpop=document.getElementById');
-  if (i < 0) throw new Error('transform block not found');
-  const j = script.indexOf("['objpop'].forEach", i);
-  if (j < 0) throw new Error('transform block end not found');
-  return script.slice(i, script.indexOf('\n', j + 40));
-}
-
-function domStub() {
-  const el = () => ({ classList: { toggle(){}, add(){}, remove(){} }, style: {}, textContent: '', addEventListener(){}, dataset: {} });
-  return { getElementById: el, querySelectorAll: () => [], querySelector: () => null, addEventListener(){} };
-}
-
-// We need DOM stubs accessible inside vm's function scope.
-export async function buildHistWorld() {
-  const C = buildCore();
-  const DOM = domStub();
-  const sandboxObjects = { objects: C.objects, removeRec: C.removeRec, restoreRec: C.restoreRec };
-  const sb = {
-    document: DOM, performance, window: { addEventListener(){} }, THREE: (await import('three')).default || (await import('three')),
-    // the history block references removeRec/restoreRec/selected/deselect/refreshPopScale/pickCmd...
-    removeRec: C.removeRec, restoreRec: C.restoreRec, place: C.place, key: C.key, objMap: C.objMap, groundMap: C.groundMap,
-    MAXO: C.MAXO, objects: C.objects, selected: null,
-    deselect(){ this.selected = null; },
-    refreshPopScale(){},
-    tween(){}, canPlace: C.canPlace,
-    console, Math, JSON, performance_now: () => performance.now(), performance2: performance,
-  };
-  return { C, sb };
-}
-
-// Simple sequential stress harness that runs the actual undo/redo paths.
-const { C, sb } = await buildHistWorld();
-
-// We test the core history semantics using a lightweight shim driven by
-// the actual recs: multi (stroke), del, and tr commands.
-// (The real pushCmd/applyCmd were extracted and inspected for module-qualified logic.)
-const history = []; let histIdx = -1;
-function updateUndoBtns(){}
-function pushCmd(c){ history.length = histIdx+1; history.push(c); if (history.length>120) history.shift(); histIdx = history.length-1; }
-function undo(){ if (histIdx<0) return; applyCmd(history[histIdx--], false); }
-function redo(){ if (histIdx>=history.length-1) return; applyCmd(history[++histIdx], true); }
-function applyCmd(c, redo){
-  if (c.t==='multi')(redo ? c.recs : [...c.recs].reverse()).forEach(r => redo ? C.restoreRec(r) : C.removeRec(r));
-  else if (c.t==='del'){ redo ? C.removeRec(c.rec) : C.restoreRec(c.rec); }
-  else if (c.t==='tr'){
-    const s = redo ? c.a : c.b;
-    c.rec.rot = s.rot; c.rec.scale = s.scale; c.rec.group.rotation.y = c.rec.rot;
-    if (c.rec.defId!=='train') c.rec.group.scale.setScalar(c.rec.scale);
-  }
-}
+const C = buildCore();
+const { history, pushCmd, undo, redo } = C;
 
 let pass = 0, fail = 0;
 const ok = (cond, name) => { if (cond) pass++; else { fail++; console.log('FAIL', name); } };
@@ -97,12 +35,18 @@ const ok = (cond, name) => { if (cond) pass++; else { fail++; console.log('FAIL'
   // clear history (simulate pushCmd past the frontier: new edit discards the branch)
   const r2 = C.place('tree', 11, 10);
   pushCmd({t:'multi', recs:[r2]});
-  ok(histIdx===history.length-1, 'B: pushing a new cmd truncates the redo branch');
+  ok(C.getHistIdx()===history.length-1, 'B: pushing a new cmd truncates the redo branch');
 }
 // ==== Sequence C: delete + undo-delete + redo-delete rapid cycling
 {
   const r = C.place('bench', 20, 20);
   pushCmd({t:'del', rec:r});
+  C.removeRec(r);
+  undo();
+  ok(C.objects.includes(r) && C.objMap.has(C.key(20,20)), 'C: undo-delete restores registry and object map');
+  redo();
+  ok(!C.objects.includes(r) && !C.objMap.has(C.key(20,20)), 'C: redo-delete removes registry and object map');
+  C.restoreRec(r);
   for (let i=0;i<50;i++){ C.removeRec(r); C.restoreRec(r); }  // user rips repeatedly
   ok(C.objects.includes(r), 'C: object survives rapid remove/restore cycle');
   ok(C.objMap.has(C.key(20,20)), 'C: objMap coherent after churn');

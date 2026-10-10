@@ -1,114 +1,59 @@
-# Automated Testing & Verification Guide — Flatlands
+# Automated testing and verification
 
-This project maintains a multi-tiered test harness covering unit invariants, rail network mathematics, autonomous entity steering, history command integrity, heavy stress workloads, and headless browser end-to-end interactions.
+Run the entire required suite with:
 
----
+```sh
+npm test
+```
 
-## 1. Test Suite Summary
+`npm test` is fail-fast: each suite is joined with `&&`, so a nonzero result from
+any required check is propagated to the command result. `npm run test:core` and
+`npm run test:browser` run the non-browser and Playwright portions respectively.
 
-Total Verified Tests: **129 passing assertions** across 6 distinct suites.
+## Machine-counted assertions
 
-| Suite | File | Tests | Runtime Environment | Focus Area |
-|---|---|---|---|---|
-| **Core Systems & Invariants** | `audit/test-core-suite.mjs` | **53** | Node.js (extracted core) | Spatial limits, rail graph recompute, train physics, wanderers, bin ticks, tunnel snapping, rapid allocation churn |
-| **History & Undo/Redo** | `audit/test-history-stress.mjs` | **13** | Node.js (extracted core) | Multi-command restoration order, redo-branch truncation, rapid remove/restore churn, 120-entry history cap |
-| **Crowd & Simulation Stress** | `audit/stress-suite.mjs` | **13** | Node.js (extracted core) | 900-object saturation, 300-agent crowd simulation over 60s, transform limits, simultaneous train & undo hammering |
-| **NPC Collision Guard** | `audit/test-guard.mjs` | **1** (12k ticks) | Node.js (extracted core) | 12,000-tick wall-clipping and enclosure escape verification |
-| **Adversarial Red-Team Audit** | `audit/redteam-audit-suite.mjs` | **41** | Playwright (Headless Firefox) | PickMeshes memory leak, rail ghost material warning, drag strokeCmd isolation, restoreRec deduplication, NPC boundary clamp, rotatable flags, genesis timer cancellation, pointercancel/blur reset, 100->900 object ladder |
-| **Browser E2E & Input Suites** | `audit/e2e.mjs` & `audit/e2e-inputs.mjs` | **8** | Playwright (Headless Firefox) | Real browser boot, genesis drop (97 objects), UI placement, Ctrl+Z undo, drag-paint rails, right-drag pan, Ctrl+R rotate, settings restart |
+The current suite has **180 machine-counted assertions**. This is an assertion
+count, not a count of scenarios, simulated ticks, or console messages.
 
----
+| Suite | File | Assertions | Coverage |
+| --- | --- | ---: | --- |
+| Core systems | `audit/test-core-suite.mjs` | 59 | Placement validation, 900-object cap, rail graph, train recovery, lifecycle maps, wanderers, bins, tunnels, invalid numeric input |
+| Feature expansion | `audit/test-feature-suite.mjs` | 20 | New catalog definitions and placement, train heading mapping, clock/time markup, lighting integration, and wheel preference wiring |
+| History stress | `audit/test-history-stress.mjs` | 15 | Multi-command undo/redo, branch truncation, deletion restoration, history cap |
+| Simulation stress | `audit/stress-suite.mjs` | 13 | Saturation, crowd updates, train/restore churn, transforms |
+| Wall guard | `audit/test-guard.mjs` | 2 | No wall occupancy for 12,000 ticks and escape through a one-tile gap |
+| Red-team browser audit | `audit/redteam-audit-suite.mjs` | 44 | Rail mesh lifecycle, real preview tint, input cleanup, Genesis, capacity ladder |
+| Main browser E2E | `audit/e2e.mjs` | 19 | Startup, Genesis, HUD placement, undo, rail painting, clock controls, wheel direction, browser errors |
+| Input browser E2E | `audit/e2e-inputs.mjs` | 8 | Left/right drag behavior, Ctrl+R, restart, browser errors |
 
-## 2. Running the Test Suites
+The browser tests use bounded readiness conditions: they wait for Three.js,
+complete Genesis, and the FPS HUD rather than relying on a fixed startup sleep.
+They serve the repository's pinned `three@0.128.0` test dependency from a local
+ephemeral HTTP server, stub only Lucide's icon-rendering call, and use a
+`PLAYWRIGHT_FIREFOX_EXECUTABLE` override when a CI environment needs one. No
+browser test fetches Three.js from a CDN or assumes a developer-home Firefox path.
 
-All tests can be executed directly using Node.js. Dependencies are specified in `package.json` (`three@0.128.0` and `playwright-core`).
+## Running individual suites
 
-### Quick Run: Core Invariants & Unit Tests
-```bash
-# 53 core system tests
+```sh
 node audit/test-core-suite.mjs
-
-# 13 history & undo/redo stress tests
+node audit/test-feature-suite.mjs
 node audit/test-history-stress.mjs
-
-# 13 crowd & saturation stress tests
 node audit/stress-suite.mjs
-
-# 12,000-tick wall collision verification
 node audit/test-guard.mjs
-```
-
-### Full Browser End-to-End & Red-Team Audits
-These tests require Playwright's Firefox browser binary (installed locally):
-```bash
-# 41 adversarial red-team audit tests
 node audit/redteam-audit-suite.mjs
-
-# Full browser E2E interaction test
 node audit/e2e.mjs
-
-# Camera, drag-paint, and keyboard input E2E test
 node audit/e2e-inputs.mjs
 ```
 
-### Run All Test Suites in Sequence
-```bash
-node audit/test-core-suite.mjs && \
-node audit/test-history-stress.mjs && \
-node audit/stress-suite.mjs && \
-node audit/test-guard.mjs && \
-node audit/redteam-audit-suite.mjs && \
-node audit/e2e.mjs && \
-node audit/e2e-inputs.mjs
-```
+Browser suites require a Firefox build discoverable by `playwright-core`, or a
+path supplied in `PLAYWRIGHT_FIREFOX_EXECUTABLE`. They fail with Playwright's
+error if neither is available; that is an environment failure, not a pass.
 
----
+## Scope and limitations
 
-## 3. Test Harness Architecture
-
-The test harness operates via two primary mechanisms:
-
-### 1. Script Extraction via `audit/extract.mjs`
-To test game logic in headless Node.js without maintaining duplicate source files, `audit/extract.mjs` extracts pure JavaScript engine routines directly from `3dsandbox.html`. It exposes:
-- Object placement and validation matrix (`canPlace`, `place`, `removeRec`, `restoreRec`).
-- Spatial maps (`groundMap`, `objMap`, `walkSpots`, `bins`).
-- Rail network topology (`railConns`, `rebuildRail`, `refreshRailsAround`).
-- Autonomous simulation updates (`updateWander`, `binTick`, train updates).
-- History stack commands (`pushCmd`, `undo`, `redo`).
-
-### 2. In-Browser Verification via Playwright
-The E2E suites (`audit/e2e.mjs`, `audit/e2e-inputs.mjs`, `audit/redteam-audit-suite.mjs`) boot the game inside headless Firefox with software WebGL rendering:
-- Shims offline CDN assets (`three.js` and `lucide`) via an embedded local HTTP server to guarantee 100% offline test reliability.
-- Captures console output (`console.error`, `console.warn`) and uncaught page exceptions.
-- Dispatches synthetic pointer, mouse, and keyboard events through the DOM to verify real user interactions.
-
----
-
-## 4. Key Verified Invariants
-
-1. **Object Limit (`MAXO = 900`):**
-   - Placement strictly returns `null` once 900 objects are reached.
-   - History redo and restore operations strictly respect the 900 cap without overflowing.
-   - Deleting an object decrements the count and re-enables placement.
-2. **Rail Network Integrity:**
-   - Removing an adjacent track updates connected neighbors to straight or corner pieces without orphaned meshes.
-   - Rebuilding rails removes previous mesh pointers from `pickMeshes`, preventing memory leaks and ghost raycasts.
-   - Trains pause safely at dead ends or track cuts without throwing `NaN` coordinates, and resume when tracks are reconnected.
-3. **Collision & Steering:**
-   - Over 12,000 continuous simulation ticks, wanderers recorded 0 frames inside solid obstacles.
-   - Wanderers trapped inside enclosures successfully find 1-tile openings and escape without clipping.
-   - Entity coordinates are clamped to world boundaries `[-HB, +HB]`.
-4. **History Isolation:**
-   - Drag-and-drop operations isolate their history command; subsequent clicks cannot contaminate previous composite stroke commands.
-   - Repeated undo/redo cycles do not duplicate records or corrupt spatial hash maps.
-5. **Lifecycle & Cleanup:**
-   - Settings restart cancels all pending Genesis falling animation timers, preventing overlapping drops.
-   - Window blur and pointercancel events reset drag candidates, panning states, and painting flags.
-
----
-
-## 5. Performance Benchmarks Recorded
-
-- **Rail Place/Delete Cycle:** ~0.22 ms per cycle (1,000 cycles completed in 215 ms).
-- **Wanderer Simulation Cost:** ~0.5 ms per frame for 300 active agents with 200 obstacles.
-- **Headless Browser Frame Rate:** Steady 60 FPS maintained during active placement and train simulation under software WebGL.
+`audit/extract.mjs` and `audit/core.mjs` execute selected logic extracted from
+the shipped `3dsandbox.html`. Browser suites separately exercise the actual page
+and pointer/keyboard paths. The test harness does not make a hardware-GPU,
+mobile-touch, screen-reader, or multi-hour soak claim. Performance thresholds in
+the Node stress suite are local checks, not portable benchmark results.

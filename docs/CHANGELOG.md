@@ -6,6 +6,25 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ---
 
+## [Unreleased]
+
+### Flatlands feature expansion
+- Added a persistent simulated day/night cycle with smooth sun, hemisphere, sky, fog, dusk/dawn, nighttime streetlight, and playable low-light transitions.
+- Added an in-game clock and Settings controls for automatic progression, speed, scrubbing, hour stepping, dawn reset, and local persistence.
+- Added seven procedural catalog assets: Shrub, Flower Bed, Fence, Signpost, Crate, Barrel, and Planter.
+- Made wheel zoom direction explicit (wheel up in, wheel down out) with an optional persisted reverse-zoom preference.
+- Corrected locomotive yaw mapping and continuously refreshed the train breadcrumb trail so the engine leads the rail and wagons keep consistent spacing through turns.
+- Added `audit/test-feature-suite.mjs` with 20 focused assertions and expanded browser E2E with seven clock/zoom checks; the configured aggregate total is now 180.
+
+### Reliability audit repair
+- Replaced informational browser output with asserted, failure-propagating E2E checks and added a fail-fast `npm test` aggregate command.
+- Made browser fixtures local and deterministic for Three.js, Lucide, fonts, ports, readiness, and optional Firefox executable resolution.
+- Strengthened placement/restoration validation and idle-entity boundary recovery.
+- Corrected test accounting to 153 machine-counted assertions and made history stress execute the extracted production history block. The feature expansion adds 27 assertions for a configured total of 180.
+- Verification is pending: this repair environment did not provide `node` or `npm`, so no suite is represented as having passed here.
+
+---
+
 ## [1.0.0] - 2026-10-10
 
 ### Release Engineering & Repository Stabilization (Claude Sonnet 4.6)

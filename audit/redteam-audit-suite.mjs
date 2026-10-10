@@ -1,28 +1,11 @@
 // Adversarial Red-Team Audit Suite — Independent Verification of All Repairs & Invariants
-import pw from 'playwright-core';
-import http from 'http';
-import fs from 'fs';
+import { assertNoCriticalBrowserErrors, launchFirefox, openReadyPage, startAppServer } from './browser.mjs';
 
-const HTML = fs.readFileSync(new URL('../3dsandbox.html', import.meta.url), 'utf8');
-
-const server = http.createServer((req, res) => {
-  res.writeHead(200, { 'content-type': 'text/html' });
-  res.end(HTML.replace('<script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>', '<script>window.lucide={createIcons(){}};</script>'));
-}).listen(8894);
-
-const browser = await pw.firefox.launch({
-  headless: true,
-  executablePath: '/home/freddyz/.cache/ms-playwright/firefox-1543/firefox/firefox',
-  firefoxUserPrefs: { 'dom.webgpu.enabled': true, 'webgl.disabled': false, 'gfx.webrender.software': true, 'layers.acceleration.force': true },
-});
-const page = await browser.newPage({ viewport: { width: 1280, height: 800 } });
-
-const errors = [];
-page.on('pageerror', e => errors.push(String(e)));
-page.on('console', m => { if (m.type() === 'error') errors.push(m.text()); });
-
-await page.goto('http://localhost:8894/', { waitUntil: 'load' });
-await page.waitForTimeout(4000);
+const fixture = await startAppServer();
+const server = fixture.server;
+const browser = await launchFirefox();
+const events = { pageErrors: [], consoleErrors: [], failedRequests: [] };
+const page = await openReadyPage(browser, fixture.url, events);
 
 let pass = 0, fail = 0;
 const test = (name, cond, info = '') => {
@@ -50,13 +33,16 @@ const test1 = await page.evaluate(() => {
 
   // 3. Verify that raycasting / picking finds r1 on the rebuilt mesh
   const hitRec = m1Rebuilt.userData.rec;
-  return {
+  const result = {
     rebuilt: m1 !== m1Rebuilt,
     inPickInitial,
     oldStillInPick,
     newInPick,
     hitRecIsR1: hitRec === r1
   };
+  removeRec(r2);
+  removeRec(r1);
+  return result;
 });
 test('Rebuild rail creates new mesh', test1.rebuilt);
 test('Initial rail mesh in pickMeshes', test1.inPickInitial);
@@ -67,36 +53,42 @@ test('Rebuilt rail mesh has correct rec reference', test1.hitRecIsR1);
 console.log('=== TEST SUITE 2: RAIL GHOST TRANSPARENCY & WARNING TINT ===');
 const test2 = await page.evaluate(() => {
   startPlacing('railway');
-  // Move over empty space
-  updateGhost({ clientX: 600, clientY: 400, target: canvas });
+  // Drive the real pointer-preview path.  The same canvas point is first empty,
+  // then occupied, so updateGhost itself must change the warning material.
+  let event = null;
+  for (const [clientX, clientY] of [[600, 620], [380, 650], [900, 620], [350, 420], [900, 420]]) {
+    updateGhost({ clientX, clientY, target: canvas });
+    if (placing.tile && canPlace(placing.def, placing.tile.x, placing.tile.z)) {
+      event = { clientX, clientY, target: canvas };
+      break;
+    }
+  }
   const meshGhost = ghost.children[0];
   const isGhostV = meshGhost.material === GHOST_V;
   const castShadow = meshGhost.castShadow;
   const receiveShadow = meshGhost.receiveShadow;
-  
-  // Test invalid placement tint (e.g. over house or out of bounds)
-  // GHOST_V color when ok vs when blocked
-  const okColor = GHOST_V.color.getHex();
-  // Move to invalid (outside grid)
-  placing.tile = { x: -5, z: -5 };
-  const okBefore = canPlace(placing.def, -5, -5);
-  // trigger tint check
-  const tintInvalid = okBefore ? 0xffffff : 0xff9a8a;
-  GHOST_V.color.setHex(tintInvalid);
+  const tile = placing.tile && { ...placing.tile };
+  const validBefore = !!tile && canPlace(placing.def, tile.x, tile.z);
+  const validColor = GHOST_V.color.getHex();
+  const blocker = validBefore && place('railway', tile.x, tile.z);
+  if (event) updateGhost(event);
   const invalidColor = GHOST_V.color.getHex();
+  if (blocker) removeRec(blocker);
   stopPlacing();
   return {
     isGhostV,
     noCastShadow: !castShadow,
     noReceiveShadow: !receiveShadow,
-    okBefore,
+    validBefore,
+    validColor,
     invalidColor
   };
 });
 test('Rail ghost uses GHOST_V transparent material', test2.isGhostV);
 test('Rail ghost does not cast shadows', test2.noCastShadow);
 test('Rail ghost does not receive shadows', test2.noReceiveShadow);
-test('Rail ghost warns with red/pink tint (0xff9a8a) when invalid', test2.invalidColor === 0xff9a8a);
+test('Rail ghost is white when the real preview is valid', test2.validBefore && test2.validColor === 0xffffff);
+test('Rail ghost warns with red/pink tint (0xff9a8a) after the real preview becomes blocked', test2.invalidColor === 0xff9a8a);
 
 console.log('=== TEST SUITE 3: DRAG CANDIDATE STROKECMD ISOLATION ===');
 const test3 = await page.evaluate(() => {
@@ -112,14 +104,18 @@ const test3 = await page.evaluate(() => {
   placeUserAt(19, 19, false);
   const rockCmd = history[history.length - 1];
   const pineCmd = history[history.length - 2];
+  const pine = pineCmd.recs[0];
+  const rock = rockCmd.recs[0];
   stopPlacing();
-
-  return {
+  const result = {
     strokeCmdCleared: strokeCmdImmediatelyAfter === null,
     commandsSeparated: pineCmd !== rockCmd,
     pineCmdCount: pineCmd.recs.length,
     rockCmdCount: rockCmd.recs.length
   };
+  removeRec(rock);
+  removeRec(pine);
+  return result;
 });
 test('strokeCmd cleared after drag-drop pointerup', test3.strokeCmdCleared);
 test('Subsequent click creates independent history command', test3.commandsSeparated);
@@ -172,10 +168,12 @@ test('restoreRec strictly obeys MAXO limit (does not exceed 900)', test4.lenAfte
 
 console.log('=== TEST SUITE 5: TRAPPED NPC ESCAPE & BOUNDARY CLAMP ===');
 const test5 = await page.evaluate(() => {
-  // Place cottage at (25, 25)
+  // Simulate a world edit placing a solid object around an existing wanderer.
+  // UI placement prevents this state, but recovery keeps save/import or future
+  // world-edit code from leaving an entity permanently embedded.
   const cot = place('cottage', 25, 25);
-  // Human placed on same tile
-  const hum = place('human', 25, 25);
+  const hum = place('human', 25, 24);
+  hum.pos = { x: t2w(25), z: t2w(25) };
   const initialPos = { ...hum.pos };
   const initialBlocked = blockedAt(hum.pos.x, hum.pos.z);
 
@@ -329,7 +327,7 @@ test('Placing entity at 900 returns null', ladderResult.overplaceEntityResult);
 test('Object count capped at exactly 900', ladderResult.finalCount === 900);
 test('Cleaned back to baseline 97 objects', ladderResult.cleanedToBaseline);
 
-test('No uncaught page or console errors during entire audit suite', errors.length === 0, `errors: ${errors.length}`);
+assertNoCriticalBrowserErrors(events, test);
 
 console.log(`\nRED-TEAM AUDIT SUMMARY: ${pass} passed, ${fail} failed.`);
 await browser.close();

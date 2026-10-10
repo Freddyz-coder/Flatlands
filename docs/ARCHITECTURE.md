@@ -67,20 +67,22 @@ Flatlands is constructed as an event-driven, single-document WebGL application. 
   - **Rotation:** Smooth 90° stepped rotations (`cam.targetRot`), interpolating with a damping factor of `0.14`.
 - **Lighting Setup:**
   - **Directional Sun Light:** Positioned at `(24, 48, 28)` casting high-resolution soft shadows (`shadow.mapSize: 2048x2048`, `bias: -0.0004`).
-  - **Ambient Light & Sky Gradient:** Dual-hemisphere lighting with dynamic color shifting matching the active theme (Warm White paper-tone vs GitHub Dark slate-tone).
-  - **Exponential Fog:** `THREE.FogExp2` tuned to softly fade distant landscape boundaries.
+  - **World Time:** `worldTime` advances in simulated hours. `updateWorldLighting()` reuses the existing sun, hemisphere light, fog, and canvas sky texture to interpolate daylight, dusk, dawn, and nighttime without rebuilding the scene.
+  - **Ambient Light & Sky Gradient:** Directional and hemisphere lighting, fog, and the sky gradient share the same solar phase. Streetlight bulbs use a shared `MeshBasicMaterial` whose brightness changes at night; no per-lamp dynamic light is created.
+  - **Fog:** A lightweight `THREE.Fog` fades distant landscape boundaries and follows the same day/night palette.
 
 ---
 
 ## 3. Procedural Geometry Engine (`B` Builder)
 
-Flatlands does not load external `.gltf` or `.obj` 3D model files. All 19 asset definitions are procedurally generated at runtime using an optimized merged-buffer builder (`class B`).
+Flatlands does not load external `.gltf` or `.obj` 3D model files. All 26 asset definitions are procedurally generated at runtime using an optimized merged-buffer builder (`class B`).
 
 ### Architecture of `class B`:
 1. **Primitive Cache (`P`):** Shared geometric primitives (`box`, `cyl`, `cyl8`, `cone`, `sphere`) pre-allocated with minimal vertex counts to maximize mobile and software-WebGL throughput.
 2. **Material Palette (`MAT`):** A shared indexed palette of `MeshLambertMaterial` instances with custom hex colors (terracotta, slate blue, meadow green, pine foliage, warm stone, wood, train iron).
 3. **Buffer Merging:** `B.build()` compiles multiple sub-shapes into a single `THREE.BufferGeometry` or grouped mesh, dramatically reducing draw calls across the 900-object capacity.
 4. **Thumbnail Generation:** A lightweight offscreen renderer (`tR`) isolates each asset definition to render crisp 2D icon previews in the UI sidebar without blocking the main render loop.
+5. **Catalog additions:** Shrubs, flower beds, fences, signposts, crates, barrels, and planters reuse the same primitive palette, placement maps, capacity guard, thumbnail renderer, and history records as the original assets.
 
 ---
 
@@ -116,7 +118,7 @@ When a rail tile is placed or modified:
 ### Train Waypoint Navigation
 - **Locomotive Engine:** Follows discrete waypoint lines along track centers.
 - **Dead-End Shuttle:** When a train arrives at a track termination without an adjacent rail connection, it reverses direction (`t.dir *= -1`), shuttling back and forth across isolated lines.
-- **Carriages & Breadcrumbs:** Trailing passenger and cargo cars sample an exact breadcrumb trail of recent locomotive positions and orientations, ensuring natural articulation through curves and S-bends.
+- **Carriages & Breadcrumbs:** Trailing passenger and cargo cars sample a continuously refreshed breadcrumb trail of locomotive positions and orientations, preserving spacing and articulation through curves and S-bends. The locomotive's local `-X` front is explicitly mapped to rail travel direction.
 - **Steam Particles:** Procedural billboard puffs spawn from the chimney, rising and dissipating with lifetime-based scale and opacity falloff.
 
 ---

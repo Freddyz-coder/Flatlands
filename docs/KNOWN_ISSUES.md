@@ -43,3 +43,7 @@ This document provides a transparent record of verified edge cases, environment-
 ### 2.3 Extended Soak Testing (>24 Hours)
 - **Testing Condition:** Accelerated simulation loops were executed (60 seconds at accelerated tick rates simulating thousands of frames of train motion and crowd wandering).
 - **Limitation:** Continuous multi-day wall-clock browser runtime was not measured. Memory profiling indicates no object or rail mesh leaks under 1,000 churn cycles, but prolonged sessions spanning multiple days have not been formally soaked.
+
+### 2.4 Node/Playwright availability in this work environment
+- **Testing Condition:** The current execution environment does not provide `node` or `npm` on `PATH`.
+- **Impact:** The 180-assertion aggregate and browser suites could be updated but not executed here; a Node environment with the pinned dependencies and a Playwright Firefox build is required for final runtime verification.

@@ -59,7 +59,7 @@ console.log('== S3: undo/redo hammering while trains run ==');
   const t1 = T.place('train', 30, 30);
   const t2 = T.place('train', 45, 30);
   // hammer: 120 ops of alternate delete/restore of a bench (the rec stays referenced)
-  const bench = T.place('bench', 25, 30);
+  const bench = T.place('bench', 25, 31);
   for (let i = 0; i < 300; i++) {
     if (i % 2 === 0) T.removeRec(bench); else T.restoreRec(bench);
     T.updateTrain(t1, 0.016, i / 60);
@@ -67,7 +67,7 @@ console.log('== S3: undo/redo hammering while trains run ==');
     T.updatePuffs(0.016); T.updateTweens(0.016);
   }
   ok(isFinite(t1.pos.x) && isFinite(t2.pos.x), 'trains stay finite during hammering');
-  ok(T.objects.includes(bench) === (300 % 2 === 1) || T.objects.includes(bench) || !T.objects.includes(bench), 'bench state consistent (either in or out, no half state)');
+  ok(!T.objects.includes(bench) && !T.objMap.has(T.key(25, 31)), 'final bench removal clears both registry and object map');
   const maps = [T.groundMap.size, T.objMap.size];
   ok(maps[0] + maps[1] === T.objects.filter(o => o.kind === 'static').length, 'maps + objects consistent after stress');
 }

@@ -1,11 +1,11 @@
 # Flatlands — A Pocket-God Sandbox
 
-[![Tests](https://img.shields.io/badge/tests-129%20passing-brightgreen)](#-automated-test-suite)
+[![Tests](https://img.shields.io/badge/tests-180%20assertions-brightgreen)](#-automated-test-suite)
 [![Engine](https://img.shields.io/badge/engine-Three.js%20r128-blue)](https://threejs.org/)
 [![Build](https://img.shields.io/badge/build-zero--build%20client--side-orange)](#-running-the-game)
 [![License](https://img.shields.io/badge/license-All%20Rights%20Reserved%20(See%20LICENSE)-lightgrey)](LICENSE)
 
-**Flatlands** is a delightful, browser-based 3D god-sandbox game built with [Three.js](https://threejs.org/). You are given an 80×80 plot of vibrant low-poly countryside to shape however you see fit: lay auto-interlocking railways, build cottages and townhouses, plant forests, and watch citizens, dogs, cats, and ducks roam around your miniature living world.
+**Flatlands** is a delightful, browser-based 3D god-sandbox game built with [Three.js](https://threejs.org/). You are given an 80×80 plot of vibrant low-poly countryside to shape however you see fit: lay auto-interlocking railways, build cottages and townhouses, plant forests, and watch citizens, dogs, cats, and ducks roam around your miniature living world as the simulated sky moves from dawn to night.
 
 Everything runs entirely client-side with zero build steps or bundlers required. Simply launch [index.html](index.html) or [3dsandbox.html](3dsandbox.html) in any modern desktop browser.
 
@@ -62,8 +62,10 @@ Everything runs entirely client-side with zero build steps or bundlers required.
 
 ### 6. Themes & Customization
 - **Theme Segments:** Switch between **Warm White** (paper-toned light theme) and **GitHub Dark** (sleek slate theme).
+- **Day/Night Cycle:** A smooth simulated clock coordinates the sun angle, directional shadows, hemisphere light, fog, sky gradient, warm dawn/dusk tones, and cool nighttime visibility. Streetlight bulbs brighten at night without adding a real-time light for every lamp.
+- **Time Controls:** Settings can pause automatic time, change the cycle speed, scrub the time of day, jump by an hour, return to dawn, and persist the preference locally.
 - **World Toggles:** Toggle real-time directional shadows, grid lines, floating clouds, and synthesized procedural sound effects on the fly.
-- **Real-Time HUD:** Live stats show current world population against the 900-object capacity limit and real-time FPS.
+- **HUD Clock:** The simulated time and current phase stay visible above the play area; live stats also show current world population against the 900-object capacity limit and FPS.
 
 ---
 
@@ -77,7 +79,7 @@ Everything runs entirely client-side with zero build steps or bundlers required.
 | **Rotate in Hand** | <kbd>Q</kbd> / <kbd>E</kbd> or <kbd>Ctrl</kbd>+<kbd>R</kbd> | Rotates carried item in 45° steps |
 | **Cancel / Put Away** | <kbd>Esc</kbd> or quick Right-click | Clears carried item without placing |
 | **Pan Camera** | Right-click and drag | Roams across terrain smoothly |
-| **Zoom View** | Mouse scroll wheel or HUD `+` / `-` | Zooms perspective between 18 and 92 units |
+| **Zoom View** | Mouse scroll wheel or HUD `+` / `-` | Wheel up zooms in and wheel down zooms out; the direction can be reversed in Settings |
 | **Rotate View 90°** | <kbd>R</kbd> or HUD spin button | Quarter-turns camera angle with smooth damping |
 | **Drift Camera** | <kbd>W</kbd> <kbd>A</kbd> <kbd>S</kbd> <kbd>D</kbd> or Arrow Keys | Pans camera smoothly across the axes |
 | **Select Placed Object** | Left-click placed object | Opens contextual god-menu with brackets |
@@ -89,12 +91,12 @@ Everything runs entirely client-side with zero build steps or bundlers required.
 
 ## 📦 Asset Catalog
 
-The game features 19 procedural low-poly assets across 5 categories with zero external 3D model dependencies:
+The game features 26 procedural low-poly assets across 5 categories with zero external 3D model dependencies:
 
 - 🏛️ **Buildings:** Cottage, Town House, Tunnel, Elevated Station Platform.
 - 🚂 **Transit Network:** Railway (dynamic auto-turn meshes), Locomotive Engine (with Passenger & Cargo Cars), Pathway.
-- 🌲 **Nature & Terrain:** Grass Patch (with flowers), Oak Tree, Pine Tree, Rock, Boulder.
-- 🪑 **Street & Decor:** Park Bench, Streetlight (with emissive bulb), Trash Bin.
+- 🌲 **Nature & Terrain:** Grass Patch (with flowers), Oak Tree, Pine Tree, Rock, Boulder, Shrub, Flower Bed.
+- 🪑 **Street & Decor:** Park Bench, Streetlight (with emissive bulb), Trash Bin, Fence, Signpost, Crate, Barrel, Planter.
 - 🐾 **Life:** Human (multi-skin/shirt variants), Cat, Dog, Duck.
 
 ---
@@ -127,32 +129,15 @@ Then navigate your browser to `http://localhost:8000/`.
 
 ## 🧪 Automated Test Suite
 
-Flatlands is backed by a comprehensive **129-test automated test harness** verified with zero failures.
+Flatlands has a **180-assertion automated test harness**. Run all required suites
+with the fail-fast aggregate command:
 
 ```bash
-# 1. Run core systems & invariant tests (53 tests)
-node audit/test-core-suite.mjs
-
-# 2. Run history & undo/redo stress tests (13 tests)
-node audit/test-history-stress.mjs
-
-# 3. Run simulation & crowd stress tests (13 tests)
-node audit/stress-suite.mjs
-
-# 4. Run 12,000-tick wall-clipping collision guard test (1 test)
-node audit/test-guard.mjs
-
-# 5. Run adversarial red-team audit suite via Playwright (41 tests)
-node audit/redteam-audit-suite.mjs
-
-# 6. Run full browser E2E interaction test
-node audit/e2e.mjs
-
-# 7. Run camera roam, drag-paint, and keyboard input E2E test
-node audit/e2e-inputs.mjs
+npm test
 ```
 
-For detailed test specifications, architecture, and benchmark measurements, see [docs/TESTING.md](docs/TESTING.md).
+For individual commands, exact assertion accounting, browser prerequisites, and
+limitations, see [docs/TESTING.md](docs/TESTING.md).
 
 ---
 
