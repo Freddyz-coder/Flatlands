@@ -1319,6 +1319,16 @@ function updateWander(rec,dt,t){
     }
   }
   if(rec.defId==='human')binTick(rec);
+  // Train watching: citizens pause to watch passing trains
+  if(rec.defId==='human'&&a.mode==='walk'){
+    for(const tr of entities){
+      if(tr.defId!=='train')continue;
+      const dx=tr.pos.x-rec.pos.x,dz=tr.pos.z-rec.pos.z;
+      if(dx*dx+dz*dz<12.25&&!tr.paused&&tr.D>0.5){
+        a.mode='idle';a.timer=rand(1.5,3);rec.heading=Math.atan2(dx,dz);break;
+      }
+    }
+  }
   const gy=groundYAt(rec.pos.x,rec.pos.z);
   rec.yBase+=(gy-rec.yBase)*Math.min(1,dt*10);
   const g=rec.group;
