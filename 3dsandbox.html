@@ -305,14 +305,7 @@ function groundPlane(size,base,y){
 }
 groundPlane(1200,'#58a04b',-0.03);          // endless countryside
 groundPlane(WORLD,'#72c05e',0);              // your plot of land
-(()=>{ // plot border
-  const b=new B();
-  b.box(0x3e7a3e,M(0,0.04, HALF,0,0,0, WORLD+0.5,0.08,0.36));
-  b.box(0x3e7a3e,M(0,0.04,-HALF,0,0,0, WORLD+0.5,0.08,0.36));
-  b.box(0x3e7a3e,M( HALF,0.04,0,0,0,0, 0.36,0.08,WORLD+0.5));
-  b.box(0x3e7a3e,M(-HALF,0.04,0,0,0,0, 0.36,0.08,WORLD+0.5));
-  scene.add(b.build());
-})();
+// plot border — added after B/M/P are defined below (TDZ safety)
 
 /* ---------- merged-geometry builder (1 draw call per object) ---------- */
 const P={
@@ -377,6 +370,15 @@ function getMat(color){
   return matCache.get(color);
 }
 const BULB=new THREE.MeshBasicMaterial({color:0xffd873});
+
+(()=>{ // plot border (uses the merged-geometry builder declared above)
+  const b=new B();
+  b.box(0x3e7a3e,M(0,0.04, HALF,0,0,0, WORLD+0.5,0.08,0.36));
+  b.box(0x3e7a3e,M(0,0.04,-HALF,0,0,0, WORLD+0.5,0.08,0.36));
+  b.box(0x3e7a3e,M( HALF,0.04,0,0,0,0, 0.36,0.08,WORLD+0.5));
+  b.box(0x3e7a3e,M(-HALF,0.04,0,0,0,0, 0.36,0.08,WORLD+0.5));
+  scene.add(b.build());
+})();
 
 /* ================================================================
    ASSET BUILDERS
@@ -715,6 +717,7 @@ function registerPick(rec){
   for(const r of roots) r.traverse(o=>{ if(o.isMesh){o.userData.rec=rec;pickMeshes.push(o);} });
 }
 function place(defId,tx,tz,rot=0,opts={}){
+  if(objects.length>=MAXO)return null; // central cap enforcement
   const def=DEFS[defId]; if(!def)return null;
   let group;
   if(def.rail){ group=new THREE.Group(); group.add(buildRailMesh(railConns(tx,tz))); }
@@ -929,8 +932,13 @@ function updateWander(rec,dt,t){
       if(a.stuck>2.5){pickTargetW(rec);a.stuck=0;}
       if(a.avoid)desired+=a.avoid;
       rec.heading+=angDiff(desired,rec.heading)*Math.min(1,dt*5);
-      rec.pos.x=clamp(rec.pos.x+Math.sin(rec.heading)*a.speed*dt,-HB,HB);
-      rec.pos.z=clamp(rec.pos.z+Math.cos(rec.heading)*a.speed*dt,-HB,HB);
+      const nx=rec.pos.x+Math.sin(rec.heading)*a.speed*dt;
+      const nz=rec.pos.z+Math.cos(rec.heading)*a.speed*dt;
+      // never step into a solid tile (prevents sliding through walls)
+      if(!blockedAt(nx,nz)){ rec.pos.x=nx; rec.pos.z=nz; }
+      else if(!blockedAt(nx,rec.pos.z)){ rec.pos.x=nx; a.stuck=(a.stuck||0)+dt; }
+      else if(!blockedAt(rec.pos.x,nz)){ rec.pos.z=nz; a.stuck=(a.stuck||0)+dt; }
+      else a.stuck=(a.stuck||0)+dt;
       if(Math.abs(rec.pos.x)>=HB||Math.abs(rec.pos.z)>=HB){a.mode='idle';a.timer=1;}
     }
   }
@@ -1206,7 +1214,7 @@ opDel.addEventListener('click',()=>{
    ================================================================ */
 const GHOST_V=new THREE.MeshBasicMaterial({transparent:true,opacity:.55,vertexColors:true,depthWrite:false});
 const GHOST_P=new THREE.MeshBasicMaterial({transparent:true,opacity:.55,depthWrite:false});
-let placing=null,ghost=null,marker=null,dragCandidate=null,lastPaint=null,strokeCmd=null,painted=false;
+let placing=null,ghost=null,marker=null,dragCandidate=null,lastPaint=null,strokeCmd=null,painted=false,painting=false;
 const lastRot={};
 
 let grid=null;
@@ -1412,8 +1420,11 @@ canvas.addEventListener('pointerdown',e=>{
   if(e.button===1)e.preventDefault();
   downInfo={x:e.clientX,y:e.clientY,b:e.button};
   if(e.button===0&&placing&&placing.def.layer==='ground'){
-    painted=true; lastPaint=null; paintMove(e); return;
+    painted=true; painting=true; lastPaint=null; paintMove(e); return;
   }
+  // When carrying an object, a left press should NOT start camera panning —
+  // it would swallow the subsequent click-place on pointerup (wasPan early return).
+  if(e.button===0&&placing)return;
   panning={x:e.clientX,y:e.clientY};
   canvas.style.cursor='grabbing';
 });
