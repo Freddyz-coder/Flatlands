@@ -36,12 +36,17 @@ export function buildCore(opts = {}) {
     section('/* ================================================================\n   PARTICLES (dust + smoke + litter) & TWEENS', '/* ================================================================\n   CLOUDS'),
     // canPlace lives in the browser section but is pure world-state logic
     section('function canPlace(def,tx,tz){', 'function placeUserAt('),
+    // Exercise the shipped history implementation rather than maintaining a
+    // second copy of its branching and command-application semantics in tests.
+    'function refreshPopScale(){}',
+    section('/* ================================================================\n   HISTORY — undo / redo', '/* ================================================================\n   INPUT — camera, picking, keys'),
     // API surface
     '; function updateStats(){} function tipOnce(){} ' +
     'return { objects, entities, walkSpots, bins, groundMap, objMap, isRailAt, railConns,' +
-    ' place, removeRec, restoreRec, canPlace, updateTrain, nextWaypoint, initTrain,' +
+    ' place, removeRec, restoreRec, canPlace, updateTrain, nextWaypoint, initTrain, trainYawFor,' +
     ' updateWander, pickTargetW, binTick, groundYAt, blockedAt, spawnPuff, updatePuffs,' +
     ' updateTweens, dropAnim, DEFS, GRID, TILE, WORLD, HALF, HB, MAXO, DIRS, key, t2w, w2t, inGrid,' +
+    ' history, pushCmd, undo, redo, applyCmd, getHistIdx:()=>histIdx,' +
     ' scene };',
   ].join('\n');
 
@@ -53,7 +58,7 @@ export function buildCore(opts = {}) {
     .replace(/(^|\n)bonk\(\)/g, '$1bonkX()'));
 
   const mk2dStub = () => ({ createLinearGradient: () => ({ addColorStop() {} }), createRadialGradient: () => ({ addColorStop() {} }), fillRect(){}, fillStyle:'', fillText(){} });
-  const stubCanvasEl = { addEventListener(){}, style:{}, getContext: () => mk2dStub() };
+  const stubCanvasEl = { addEventListener(){}, classList:{toggle(){}}, style:{}, getContext: () => mk2dStub() };
   const stubDoc = { createElement: () => ({ width: 0, height: 0, getContext: () => mk2dStub() }), getElementById: () => stubCanvasEl };
   const C = fn(THREE, stubUpdateStats, stubTip, () => {}, stubPlop, stubBonk, stubDoc);
   C.audioCalls = audioCalls;

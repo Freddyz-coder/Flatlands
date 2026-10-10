@@ -4,7 +4,10 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "npm run test:all",
+    "test:all": "node audit/test-core-suite.mjs && node audit/test-feature-suite.mjs && node audit/test-history-stress.mjs && node audit/stress-suite.mjs && node audit/test-guard.mjs && node audit/redteam-audit-suite.mjs && node audit/e2e.mjs && node audit/e2e-inputs.mjs",
+    "test:core": "node audit/test-core-suite.mjs && node audit/test-feature-suite.mjs && node audit/test-history-stress.mjs && node audit/stress-suite.mjs && node audit/test-guard.mjs",
+    "test:browser": "node audit/redteam-audit-suite.mjs && node audit/e2e.mjs && node audit/e2e-inputs.mjs"
   },
   "keywords": [],
   "type": "commonjs",

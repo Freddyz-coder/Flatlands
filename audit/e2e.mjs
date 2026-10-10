@@ -1,137 +1,103 @@
-// Browser E2E: loads the real 3dsandbox.html in headless Firefox (WebGL via software GL),
-// watches console errors/pageerrors, performs real interactions, and asserts game state.
-import pw from 'playwright-core';
-import http from 'http';
-import fs from 'fs';
-import url from 'url';
+// Browser E2E: verifies real startup and user input against the shipped page.
+import { assertNoCriticalBrowserErrors, launchFirefox, openReadyPage, startAppServer } from './browser.mjs';
 
-const HTML = fs.readFileSync(new URL('../3dsandbox.html', import.meta.url), 'utf8');
-const server = http.createServer((req, res) => {
-  res.writeHead(200, { 'content-type': 'text/html' });
-  res.end(HTML);
-}).listen(8899);
-
-// Externals (three.js CDN + fonts) will fail offline; we shim them via a route that
-// serves where possible. three.js must load for the game to run — check net access.
-let cdnThree = null;
-try {
-  const r = await fetch('https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js', { signal: AbortSignal.timeout(8000) });
-  if (r.ok) cdnThree = await r.text();
-} catch {}
-console.log('three.js CDN fetch:', cdnThree ? 'OK (' + (cdnThree.length / 1024).toFixed(0) + ' KB)' : 'UNAVAILABLE (offline)');
-
-const server2 = http.createServer((req, res) => {
-  const p = url.parse(req.url).pathname;
-  if (p.startsWith('/three') && cdnThree) { res.writeHead(200, {'content-type':'text/javascript'}); res.end(cdnThree); return; }
-  if (p.startsWith('/lucide')) { res.writeHead(200, {'content-type':'text/javascript'}); res.end('window.lucide={createIcons(){}}'); return; }
-  res.writeHead(200, { 'content-type': 'text/html' });
-  // inline three.js + lucide stub so the headless browser (no CDN route) still boots
-  const inlined = HTML
-    .replace('<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>',
-      '<script>' + cdnThree + '</script>')
-    .replace('<script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>',
-      '<script>window.lucide={createIcons(){}};</script>');
-  res.end(inlined);
-}).listen(8898);
-
-const browser = await pw.firefox.launch({
-  headless: true,
-  executablePath: '/home/freddyz/.cache/ms-playwright/firefox-1543/firefox/firefox',
-  firefoxUserPrefs: {
-    'dom.webgpu.enabled': true,
-    'webgl.disabled': false,
-    'gfx.webrender.software': true,
-    'layers.acceleration.force': true,
-  },
-});
-const page = await browser.newPage({ viewport: { width: 1280, height: 800 } });
-
-const errors = [], pageErrors = [], failedRequests = [];
-page.on('console', m => { if (m.type() === 'error') errors.push(m.text()); });
-page.on('pageerror', e => pageErrors.push(String(e)));
-page.on('requestfailed', r => failedRequests.push(r.url().slice(0, 90)));
-
-// Interception is not supported on this playwright-core/Firefox pairing, so the local
-// HTTPS shim does not work. Instead we rewrite the served HTML: relative URLs are
-// resolved against localhost:8898, and we inject a CDN-forwarding route by rewriting
-// script sources at runtime.
-// 
-// Simplest correct option: the CDN fetch already succeeded above (three.js). We inject
-// an init script that waits for the missing script tags to fail, then eval the fetched
-// three.js + a stub lucide BEFORE the game script runs. This happens after DOM ready.
-await page.addInitScript(`
-  window.__shimMode = true; // three.js + lucide are inlined by the local server
-`);
-
-await page.goto('http://localhost:8898/', { waitUntil: 'load' }).catch(e => console.log('goto note:', e.message.split('\n')[0]));
-await page.waitForTimeout(4500);   // genesis drop ~4.2s + settle
-
-const report = {};
-report.consoleErrors = errors;
-report.pageErrors = pageErrors;
-report.failedRequests = failedRequests;
-report.threeLoaded = await page.evaluate(() => typeof window.THREE !== 'undefined');
-report.objectCount = await page.evaluate(() => { try { return objects.length } catch { return -1 } });
-report.hasFps = await page.evaluate(() => document.getElementById('statFps').textContent);
-report.hasCounter = await page.evaluate(() => document.getElementById('statThings').textContent);
-const fpsNum = parseInt(report.hasFps);
-report.fpsNumeric = isNaN(fpsNum) ? -1 : fpsNum;
-
-console.log('== E2E startup ==');
-console.log('THREE loaded:', report.threeLoaded);
-console.log('genesis objects:', report.objectCount, '(expect 97)');
-console.log('counter:', report.hasCounter, '| fps label:', report.hasFps);
-console.log('console errors:', errors.length ? errors : '(none)');
-console.log('page errors:', pageErrors.length ? pageErrors : '(none)');
-
-// ---- Interaction: click a tree item, then click on the canvas to place it ----
-if (report.threeLoaded) {
-  const before = report.objectCount;
-  await page.click('.item[data-def="tree"]');
-  await page.waitForTimeout(300);
-  const canvas = await page.$('#scene');
-  const box = await canvas.boundingBox();
-  // place into an empty area: south part of the world (below the starter town at z~46)
-  // genesis city occupies the centre; 0.72 height = further south = free grass
-  await page.mouse.click(box.x + box.width * 0.5, box.y + box.height * 0.72);
-  await page.waitForTimeout(600);
-  const after = await page.evaluate(() => { try { return objects.length } catch { return -1 } });
-  report.placeWorked = after === before + 1;
-  report.trees = await page.evaluate(() => { try { return objects.filter(o => o.defId === 'tree').length } catch { return -1 } });
-  console.log('== place a tree via UI ==', { before, after, worked: report.placeWorked, treesTotal: report.trees });
-
-  // ---- Ctrl+Z undo places the tree back in history ----
-  await page.keyboard.press('Control+z');
-  await page.waitForTimeout(300);
-  const afterUndo = await page.evaluate(() => { try { return objects.length } catch { return -1 } });
-  report.undoWorked = afterUndo === before;
-  report.treesAfterUndo = await page.evaluate(() => { try { return objects.filter(o => o.defId === 'tree').length } catch { return -1 } });
-  console.log('== undo ==', { afterUndo, undoWorked: report.undoWorked, treesAfterUndo: report.treesAfterUndo });
-
-  // ---- Drag-paint a few railway tiles ----
-  await page.click('.item[data-def="railway"]');
-  const cx = box.x + box.width * 0.4, cy = box.y + box.height * 0.4;
-  await page.mouse.move(cx, cy);
-  await page.mouse.down();
-  for (let i = 1; i <= 6; i++) await page.mouse.move(cx + i * 20, cy, { steps: 4 });
-  await page.mouse.up();
-  await page.waitForTimeout(400);
-  report.railCount = await page.evaluate(() => { try { return objects.filter(o => o.defId === 'railway').length } catch { return -1 } });
-  console.log('== drag-paint rails ==', { placed: report.railCount, ok: report.railCount > 1 });
-
-  // ---- Train on the painted line ----
-  // find a rail tile, place train via the API (the UI requires drop but we test the state)
-  report.trains = await page.evaluate(() => { try { const rail = objects.find(o => o.defId === 'railway'); return rail ? rail.tile : null } catch { return null } });
-  // ---- FPS sanity ----
-  await page.waitForTimeout(2000);
-  const fps2 = parseInt(await page.evaluate(() => document.getElementById('statFps').textContent));
-  report.fpsAfterInteractions = fps2;
-  console.log('== fps after interactions ==', fps2);
+let pass=0,fail=0,browser,server;
+const events={pageErrors:[],consoleErrors:[],failedRequests:[]};
+function test(condition,name,detail=''){
+  if(condition){pass++;console.log(`  PASS: ${name}${detail?` (${detail})`:''}`);}
+  else{fail++;console.error(`  FAIL: ${name}${detail?` (${detail})`:''}`);}
+}
+async function pickPlaceablePoint(page){
+  const canvas=await page.$('#scene');
+  const box=await canvas.boundingBox();
+  for(const [x,y] of [[.50,.72],[.18,.74],[.78,.72],[.20,.35],[.74,.35]]){
+    const point={x:box.x+box.width*x,y:box.y+box.height*y};
+    await page.mouse.move(point.x,point.y);
+    const valid=await page.evaluate(()=>!!(placing&&placing.tile&&canPlace(placing.def,placing.tile.x,placing.tile.z)));
+    if(valid)return point;
+  }
+  return null;
 }
 
-console.log('\n== summary ==');
-console.log(JSON.stringify(report, null, 2).slice(0, 2400));
-await page.close();
-await browser.close();
-server.close(); server2.close();
-process.exit(0);
+try{
+  const fixture=await startAppServer(); server=fixture.server;
+  browser=await launchFirefox();
+  const page=await openReadyPage(browser,fixture.url,events);
+
+  const startup=await page.evaluate(()=>({
+    three:typeof THREE!=='undefined', count:objects.length, expected:STARTER.length,
+    max:MAXO, counter:document.getElementById('statThings').textContent,
+    fps:document.getElementById('statFps').textContent,
+  }));
+  test(startup.three,'Three.js initializes from the local fixture');
+  test(startup.count===startup.expected,'Genesis reaches its complete starter state',`${startup.count}/${startup.expected}`);
+  test(startup.counter===`${startup.expected} / ${startup.max} things`,'HUD object counter matches registry',startup.counter);
+  test(/^\d+ fps$/.test(startup.fps),'HUD reports a numeric frame rate',startup.fps);
+
+  await page.click('.item[data-def="tree"]');
+  await page.waitForFunction(()=>placing&&placing.defId==='tree',undefined,{timeout:2000});
+  const treePoint=await pickPlaceablePoint(page);
+  test(!!treePoint,'A valid UI placement point can be previewed for a tree');
+  if(treePoint){
+    const before=await page.evaluate(()=>objects.length);
+    await page.mouse.click(treePoint.x,treePoint.y);
+    await page.waitForFunction(expected=>objects.length===expected,before+1,{timeout:2000});
+    const after=await page.evaluate(()=>objects.length);
+    test(after===before+1,'Clicking the canvas places one tree through the UI',`${before} -> ${after}`);
+
+    await page.keyboard.press('Control+z');
+    await page.waitForFunction(expected=>objects.length===expected,before,{timeout:2000});
+    test(await page.evaluate(expected=>objects.length===expected,before),'Ctrl+Z removes the UI placement');
+  }else{
+    test(false,'Clicking the canvas places one tree through the UI','no valid preview point');
+    test(false,'Ctrl+Z removes the UI placement','tree was not placed');
+  }
+
+  await page.click('.item[data-def="railway"]');
+  await page.waitForFunction(()=>placing&&placing.defId==='railway',undefined,{timeout:2000});
+  const railPoint=await pickPlaceablePoint(page);
+  test(!!railPoint,'A valid UI placement point can be previewed for a railway');
+  if(railPoint){
+    const initialRails=await page.evaluate(()=>objects.filter(o=>o.defId==='railway').length);
+    await page.mouse.move(railPoint.x,railPoint.y);
+    await page.mouse.down();
+    await page.mouse.move(railPoint.x+100,railPoint.y,{steps:12});
+    await page.mouse.up();
+    await page.waitForFunction(before=>objects.filter(o=>o.defId==='railway').length>before,initialRails,{timeout:2000});
+    const rails=await page.evaluate(()=>objects.filter(o=>o.defId==='railway').length);
+    test(rails>initialRails,'Dragging on the canvas paints railway tiles',`${initialRails} -> ${rails}`);
+  }else test(false,'Dragging on the canvas paints railway tiles','no valid preview point');
+
+  const clock=await page.evaluate(()=>({label:clockTime.textContent,phase:clockPhase.textContent}));
+  test(/^\d{2}:\d{2}$/.test(clock.label)&&clock.phase,'HUD clock exposes simulated time and phase');
+  await page.click('#gearBtn');
+  await page.click('[data-set="autoTime"]');
+  test(await page.evaluate(()=>worldTime.auto===false&&!prefs.autoTime),'Automatic time can be paused from Settings');
+  await page.evaluate(()=>{const input=document.getElementById('timeRange');input.value='1080';input.dispatchEvent(new Event('input',{bubbles:true}));});
+  test(await page.evaluate(()=>clockTime.textContent==='18:00'&&clockPhase.textContent==='DUSK'),'Scrubbing time updates the clock and dusk lighting phase');
+  await page.click('#timeDawn');
+  test(await page.evaluate(()=>clockTime.textContent==='06:00'&&worldTime.hours===6),'Dawn control resets simulated time');
+  await page.evaluate(()=>{const input=document.getElementById('timeSpeed');input.value='0.12';input.dispatchEvent(new Event('input',{bubbles:true}));});
+  test(await page.evaluate(()=>Math.abs(worldTime.speed-.12)<1e-9),'Cycle speed control updates simulated speed');
+  const canvasBox=await canvas.boundingBox();
+  await page.mouse.move(canvasBox.x+canvasBox.width*.5,canvasBox.y+canvasBox.height*.5);
+  const zoomStart=await page.evaluate(()=>cam.targetDist);
+  await page.mouse.wheel(0,-100);
+  const zoomIn=await page.evaluate(()=>cam.targetDist);
+  await page.mouse.wheel(0,100);
+  const zoomOut=await page.evaluate(()=>cam.targetDist);
+  test(zoomIn<zoomStart&&zoomOut>zoomIn,'Wheel up zooms in and wheel down zooms out');
+  await page.click('[data-set="zoomReverse"]');
+  const reverseStart=await page.evaluate(()=>cam.targetDist);
+  await page.mouse.wheel(0,-100);
+  test(await page.evaluate(start=>cam.targetDist>start,reverseStart),'Reverse wheel zoom preference is applied');
+  assertNoCriticalBrowserErrors(events,test);
+  await page.close();
+}catch(error){
+  fail++; console.error('UNEXPECTED E2E ERROR:',error?.stack||error);
+}finally{
+  if(browser)await browser.close();
+  if(server)await new Promise(resolve=>server.close(resolve));
+}
+console.log(`E2E SUMMARY: ${pass} passed, ${fail} failed.`);
+process.exitCode=fail?1:0;
