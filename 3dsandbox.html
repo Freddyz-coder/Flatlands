@@ -118,7 +118,7 @@
   .tgl.on .switch::after{ left:20px; background:var(--panel); }
   #resetBtn{ width:100%; margin-top:12px; padding:8px; font-weight:700; font-size:12.5px; border-radius:11px;
              background:var(--panel2); border:2px solid var(--ink); box-shadow:0 3px 0 var(--ink); color:var(--ink); }
-  #resetBtn.armed{ background:var(--danger); border-color:var(--danger); color:#fff; box-shadow:0 3px 0 #8d2f27; }
+  #resetBtn.armed, #restartBtn.armed{ background:var(--danger); border-color:var(--danger); color:#fff; box-shadow:0 3px 0 #8d2f27; }
 
   /* ---------- help card ---------- */
   #helpCard{ width:310px; z-index:60; }
@@ -211,6 +211,8 @@
   <button class="tgl" type="button" data-set="clouds"><span>Clouds</span><span class="switch"></span></button>
   <button class="tgl" type="button" data-set="sound"><span>Sounds</span><span class="switch"></span></button>
   <button id="resetBtn" type="button">Flatten the world</button>
+  <button id="restartBtn" type="button" style="width:100%; margin-top:8px; padding:8px; font-weight:700; font-size:12.5px; border-radius:11px;
+         background:var(--panel2); border:2px solid var(--ink); box-shadow:0 3px 0 var(--ink); color:var(--ink);">Restart the game</button>
 </div>
 
 <div id="helpCard" class="pop hidden">
@@ -1422,9 +1424,8 @@ canvas.addEventListener('pointerdown',e=>{
   if(e.button===0&&placing&&placing.def.layer==='ground'){
     painted=true; painting=true; lastPaint=null; paintMove(e); return;
   }
-  // When carrying an object, a left press should NOT start camera panning —
-  // it would swallow the subsequent click-place on pointerup (wasPan early return).
-  if(e.button===0&&placing)return;
+  // camera movement is right-drag only
+  if(e.button!==2)return;
   panning={x:e.clientX,y:e.clientY};
   canvas.style.cursor='grabbing';
 });
@@ -1496,6 +1497,13 @@ window.addEventListener('keydown',e=>{
   const k=e.key.toLowerCase();
   if((e.ctrlKey||e.metaKey)&&k==='z'){e.preventDefault();e.shiftKey?redo():undo();return;}
   if((e.ctrlKey||e.metaKey)&&k==='y'){e.preventDefault();redo();return;}
+  // Ctrl/Cmd+R must NOT fall through to the browser (page reload = world reset).
+  // It rotates the held object (like Q/E) when one is in hand.
+  if((e.ctrlKey||e.metaKey)&&k==='r'){
+    e.preventDefault();
+    if(placing&&placing.def.rotatable!==false){ placing.rot=(placing.rot+Math.PI/4)%(Math.PI*2); }
+    return;
+  }
   if(k==='r'){rotateView();return;}
   if(k==='escape'){stopPlacing();deselect();closePops();return;}
   if(k==='delete'||k==='backspace'){if(selected){pushCmd({t:'del',rec:selected});removeRec(selected);}return;}
@@ -1566,17 +1574,33 @@ resetBtn.addEventListener('click',()=>{
     resetArm=setTimeout(()=>{resetArm=null;resetBtn.textContent='Flatten the world';resetBtn.classList.remove('armed');},2600);
   }
 });
+let restartArm=null;
+const restartBtn=document.getElementById('restartBtn');
+restartBtn.addEventListener('click',()=>{
+  if(restartArm){
+    clearTimeout(restartArm); restartArm=null;
+    restartBtn.textContent='Restart the game'; restartBtn.classList.remove('armed');
+    stopPlacing(); deselect(); closePops();
+    [...objects].forEach(r=>removeRec(r));
+    history.length=0; histIdx=-1; updateUndoBtns();
+    toast('Creating the world anew…','sparkles');
+    runGenesis();
+  }else{
+    restartBtn.textContent='Recreate the starter town?'; restartBtn.classList.add('armed');
+    restartArm=setTimeout(()=>{restartArm=null;restartBtn.textContent='Restart the game';restartBtn.classList.remove('armed');},2600);
+  }
+});
 applyTheme(prefs.theme); syncSettings();
 
 const HELP={
   place:{h:'Dropping things',b:`<ul>
     <li><b>Drag</b> an item from the menu onto the land — or <b>click it once</b> to hold it, then click the world to drop it (keep clicking to spam).</li>
-    <li><kbd>Q</kbd> <kbd>E</kbd> rotate rotatable items while held.</li>
+    <li><kbd>Q</kbd> <kbd>E</kbd> (or <kbd>Ctrl</kbd><kbd>R</kbd>) rotate rotatable items while held.</li>
     <li>Drag with the left button to <b>paint</b> ground things — rails, paths, grass, platforms.</li>
     <li>A <b>red ghost</b> means it won't fit: nothing may overlap.</li>
     <li><kbd>Esc</kbd> or a quick right-click puts the item back.</li></ul>`},
   cam:{h:'Camera & god powers',b:`<ul>
-    <li><kbd>Scroll</kbd> zoom · <kbd>Right-drag</kbd> roam · <kbd>R</kbd> quarter-turn</li>
+    <li><kbd>Scroll</kbd> zoom · <kbd>Right-drag</kbd> roam (only right button) · <kbd>R</kbd> quarter-turn</li>
     <li><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> drift around</li>
     <li><b>Click a thing</b> to rotate, resize or smite it</li>
     <li><kbd>Ctrl</kbd><kbd>Z</kbd> undo · <kbd>Ctrl</kbd><kbd>Y</kbd> redo · <kbd>Del</kbd> smite</li>
@@ -1636,7 +1660,7 @@ const STARTER=[
   ['human',38,47],['human',41,48],['cat',32,46],['dog',48,46],['duck',35,46],
   ['train',44,44],
 ];
-(function genesis(){
+function runGenesis(){
   const ground=[],things=[];
   STARTER.forEach(s=>(DEFS[s[0]].layer==='ground'?ground:things).push(s));
   ground.forEach(s=>place(s[0],s[1],s[2],s[3]||0,{genesis:true}));
@@ -1644,11 +1668,12 @@ const STARTER=[
     const rec=place(s[0],s[1],s[2],s[3]||0,{genesis:true});
     if(rec)dropAnim(rec);
   }));
-})();
+}
 
 /* ================================================================
    MAIN LOOP
    ================================================================ */
+runGenesis();
 lucide.createIcons();
 updateStats(); updateUndoBtns();
 const introEnd=performance.now()+2600;
